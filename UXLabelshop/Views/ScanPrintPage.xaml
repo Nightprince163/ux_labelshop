@@ -4,76 +4,42 @@
         FontSize="13"
         InputMethod.IsInputMethodEnabled="False">
     <DockPanel Margin="12">
-        <!-- 顶部：模板 / 扫码（元信息行）+ 分组工具栏。样式与模板编辑器共用 App.xaml 的
-             ToolButton / DangerToolButton / GroupLabel / ToolSep，图标都是矢量 Geometry。 -->
-        <Border DockPanel.Dock="Top" Background="#F8FAFC" Padding="14,10,14,12"
-                BorderBrush="#E2E8F0" BorderThickness="0,0,0,1" Margin="0,0,0,10">
-            <StackPanel>
-                <!-- 元信息行：模板选择 + 扫码输入（x:Name 与绑定保持原样，自检依赖） -->
-                <DockPanel Margin="0,0,0,10">
-                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
-                        <TextBlock Text="模板" VerticalAlignment="Center" Foreground="#64748B" Margin="0,0,8,0"/>
-                        <ComboBox Height="30" Width="180" VerticalContentAlignment="Center"
-                                  ItemsSource="{Binding Templates}"
-                                  SelectedItem="{Binding SelectedTemplate}"
-                                  DisplayMemberPath="Name"/>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" HorizontalAlignment="Right">
-                        <TextBlock Text="扫码" VerticalAlignment="Center" Foreground="#64748B" Margin="0,0,8,0"/>
-                        <TextBox x:Name="ScanBox" Height="30" Width="234" FontSize="14"
-                                 VerticalContentAlignment="Center" Padding="6,0"
-                                 InputMethod.IsInputMethodEnabled="False"
-                                 Text="{Binding ScanText, UpdateSourceTrigger=PropertyChanged}"
-                                 KeyDown="ScanBox_KeyDown"
-                                 ToolTip="扫码枪回车提交；未匹配规则会新增空行供手动填写"/>
-                    </StackPanel>
-                </DockPanel>
+        <!-- 顶部：模板 / 扫码 / 操作，保持原有单排布局。
+             仅按钮改用与模板编辑器同一套 ToolButton / DangerToolButton 样式与矢量图标，
+             不分组、不加组名、不改输入框位置。 -->
+        <Border DockPanel.Dock="Top" Background="#F5F7FA" Padding="10" CornerRadius="4" Margin="0,0,0,10">
+            <WrapPanel Orientation="Horizontal">
+                <TextBlock Text="模板" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                <ComboBox Height="30" Width="180" Margin="0,2,10,2"
+                          ItemsSource="{Binding Templates}"
+                          SelectedItem="{Binding SelectedTemplate}"
+                          DisplayMemberPath="Name"/>
 
-                <WrapPanel Orientation="Horizontal">
-                    <!-- 清单 -->
-                    <StackPanel Margin="0,0,2,0">
-                        <TextBlock Text="清单" Style="{StaticResource GroupLabel}"/>
-                        <StackPanel Orientation="Horizontal">
-                            <Button Content="新增行" Tag="{StaticResource IcoAddRow}"
-                                    Style="{StaticResource ToolButton}"
-                                    ToolTip="在清单末尾新增一张空白标签"
-                                    Command="{Binding AddBlankRowCommand}"/>
-                            <Button Content="删行" Tag="{StaticResource IcoRemoveRow}"
-                                    Style="{StaticResource DangerToolButton}"
-                                    ToolTip="删除当前选中行" Click="DeleteRow_Click"/>
-                        </StackPanel>
-                    </StackPanel>
+                <TextBlock Text="扫码" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                <TextBox x:Name="ScanBox" Height="32" Width="234" Margin="0,2,10,2" FontSize="15"
+                         InputMethod.IsInputMethodEnabled="False"
+                         Text="{Binding ScanText, UpdateSourceTrigger=PropertyChanged}"
+                         KeyDown="ScanBox_KeyDown" ToolTip="扫码枪回车提交；未匹配规则会新增空行供手动填写"/>
 
-                    <Rectangle Style="{StaticResource ToolSep}"/>
-
-                    <!-- 编辑 -->
-                    <StackPanel Margin="0,0,2,0">
-                        <TextBlock Text="编辑" Style="{StaticResource GroupLabel}"/>
-                        <StackPanel Orientation="Horizontal">
-                            <Button Content="填充…" Tag="{StaticResource IcoFill}"
-                                    Style="{StaticResource ToolButton}"
-                                    ToolTip="固定值 / 序列号 / 复制上一行 填充空白单元格"
-                                    Click="BatchFill_Click"/>
-                            <Button Content="清空" Tag="{StaticResource IcoDelete}"
-                                    Style="{StaticResource DangerToolButton}"
-                                    ToolTip="清空全部清单行" Click="ClearButton_Click"/>
-                        </StackPanel>
-                    </StackPanel>
-
-                    <Rectangle Style="{StaticResource ToolSep}"/>
-
-                    <!-- 视图 -->
-                    <StackPanel Margin="0,0,2,0">
-                        <TextBlock Text="视图" Style="{StaticResource GroupLabel}"/>
-                        <StackPanel Orientation="Horizontal">
-                            <Button x:Name="PreviewToggleButton" Content="隐藏预览"
-                                    Tag="{StaticResource IcoEye}" Style="{StaticResource ToolButton}"
-                                    ToolTip="隐藏 / 显示右侧标签预览（分隔条也可拖动调整宽度）"
-                                    Click="TogglePreview_Click"/>
-                        </StackPanel>
-                    </StackPanel>
-                </WrapPanel>
-            </StackPanel>
+                <Button Content="新增行" Tag="{StaticResource IcoAddRow}"
+                        Style="{StaticResource ToolButton}"
+                        ToolTip="在清单末尾新增一张空白标签"
+                        Command="{Binding AddBlankRowCommand}"/>
+                <Button Content="删行" Tag="{StaticResource IcoRemoveRow}"
+                        Style="{StaticResource DangerToolButton}"
+                        ToolTip="删除当前选中行" Click="DeleteRow_Click"/>
+                <Button Content="填充…" Tag="{StaticResource IcoFill}"
+                        Style="{StaticResource ToolButton}"
+                        ToolTip="固定值 / 序列号 / 复制上一行 填充空白单元格"
+                        Click="BatchFill_Click"/>
+                <Button Content="清空" Tag="{StaticResource IcoDelete}"
+                        Style="{StaticResource DangerToolButton}"
+                        ToolTip="清空全部清单行" Click="ClearButton_Click"/>
+                <Button x:Name="PreviewToggleButton" Content="隐藏预览"
+                        Tag="{StaticResource IcoEye}" Style="{StaticResource ToolButton}"
+                        ToolTip="隐藏 / 显示右侧标签预览（分隔条也可拖动调整宽度）"
+                        Click="TogglePreview_Click"/>
+            </WrapPanel>
         </Border>
 
         <!-- 底部：状态栏 -->
