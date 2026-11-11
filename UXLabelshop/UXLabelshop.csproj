@@ -9,7 +9,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>UXLabelshop</RootNamespace>
     <AssemblyName>UXLabelshop</AssemblyName>
-    <Version>0.4.0</Version>
+    <Version>0.4.1</Version>
     <Product>UX_LabelShop 桌面客户端</Product>
     <InvariantGlobalization>false</InvariantGlobalization>
     <!-- 单文件发布：自包含 + 原生库内嵌 + 压缩 -->
@@ -26,6 +26,8 @@
   <ItemGroup>
     <!-- 窗口标题栏 / 任务栏图标，供 XAML 的 Icon="pack://application:,,," 引用 -->
     <Resource Include="Assets\app.ico" />
+    <!-- 登录窗体背景（无边框科技风） -->
+    <Resource Include="Assets\login-bg.jpg" />
   </ItemGroup>
 
   <ItemGroup>

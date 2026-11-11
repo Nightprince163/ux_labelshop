@@ -16,15 +16,6 @@ namespace UXLabelshop.Services;
 /// </summary>
 public sealed class LsdImportResult
 {
-    /// <summary>标签打印常见字段的视觉行序（LabelShop TIA/UX 系列实测）。</summary>
-    private static readonly string[] LabelVisualOrder =
-    {
-        "订单号", "产品型号", "批号", "LOT ID", "片号", "编号",
-        "数量", "DATE CODE", "D/C", "BIN",
-        "PO#", "Package", "Part NO", "Part No", "lot no", "Lot No", "Track ID",
-        "型号", "型号3", "型号4", "批次", "批次号", "L/N", "DC", "Date Code",
-    };
-
     public string FileName { get; init; } = "";
     public string? SavedTitle { get; init; }
     public string? Software { get; init; }
@@ -41,29 +32,8 @@ public sealed class LsdImportResult
     /// <summary>明文段读出的对象文字：静态标签（以 : / ： 结尾）与上次输入的样例值。</summary>
     public List<LsdConstText> ConstTexts { get; init; } = new();
     public int ConstTextCount => ConstTexts.Count;
-    /// <summary>
-    /// 静态标签按「视觉行序」返回。.lsd 里对象按创建顺序序列化，和标签上从上到下的
-    /// 顺序不一致；而「文字↔包围盒」的对应关系在压缩块里读不到，因此用标签打印的
-    /// 常见字段顺序做稳定重排（仅当命中 ≥3 个已知字段才启用，避免打乱其它字段体系）。
-    /// </summary>
-    public List<string> StaticLabels
-    {
-        get
-        {
-            var list = ConstTexts.Where(t => t.IsLabel).Select(t => t.Text).ToList();
-            int Rank(string s)
-            {
-                var k = s.Trim().TrimEnd(':', '：').Trim();
-                for (var i = 0; i < LabelVisualOrder.Length; i++)
-                    if (string.Equals(LabelVisualOrder[i], k, StringComparison.OrdinalIgnoreCase)) return i;
-                return int.MaxValue;
-            }
-            if (list.Count(s => Rank(s) != int.MaxValue) < 3) return list;
-            var known = list.Where(s => Rank(s) != int.MaxValue).OrderBy(Rank).ToList();
-            var unknown = list.Where(s => Rank(s) == int.MaxValue).ToList();
-            return known.Concat(unknown).ToList();
-        }
-    }
+    /// <summary>静态标签，保持 .lsd 对象记录顺序（不再按字段名重排，避免套错命名体系）。</summary>
+    public List<string> StaticLabels => ConstTexts.Where(t => t.IsLabel).Select(t => t.Text).ToList();
     public List<string> SampleValues => ConstTexts.Where(t => !t.IsLabel).Select(t => t.Text).ToList();
 
     public string InfoText =>
@@ -298,63 +268,87 @@ public static class LsdImportService
         && 50 <= x2 - x1 && x2 - x1 <= maxW && 50 <= y2 - y1 && y2 - y1 <= maxH;
 
     /// <summary>
-    /// 明文段：长度前缀(1 字节) + GBK 字符串。每个文本对象都存着自己的显示文字
-    /// （静态标签，如「订单号:」）或上次输入的样例值（如「WX-251219-03」）。
-    /// 需跳过压缩编码块、文件头、字体名、打印机名和 LabelShop 固定的输入提示串。
+    /// 按「输入数据：」锚点把文件切成一条条对象记录，只在段内取主文字。
+    /// 早期版本全文件扫描「长度前缀 + GBK 字符串」，会把压缩块/位图字节误读成中文
+    /// （如「鶄鄥N」「纭:」），导致导入模板出现乱码。对象记录结构固定为：
+    ///   ...编码块尾 | 01 80 xx 00 00 00 00 00 00 00 00 00 | &lt;len&gt;&lt;主文字&gt; |
+    ///   固定模板 0123456789 / 输入数据： / 1234567890 | 下一个编码块
+    /// 因此按段提取可稳定拿到每个对象的显示文字，且天然排除编码块噪声。
     /// </summary>
     private static List<LsdConstText> ReadConstTexts(byte[] data, string? title, string? printer)
     {
         var result = new List<LsdConstText>();
-        var skip = EncodedRanges(data);
-        var seen = new HashSet<string>(StringComparer.Ordinal);
-
-        for (var i = 200; i + 2 < data.Length; i++)
+        var anchor = Gbk.GetBytes("输入数据：");
+        var anchors = new List<int>();
+        for (var i = 0; i <= data.Length - anchor.Length; i++)
         {
-            var len = data[i];
-            if (len is < 2 or > 40 || i + 1 + len > data.Length) continue;
-            if (InRanges(i, skip)) continue;
-            var body = Gbk.GetString(data, i + 1, len);
-            if (body.Contains('\ufffd') || body.Any(c => c < 32)) continue;
-            var t = body.Trim();
-            if (t.Length < 2 || IsNoise(t, title, printer)) continue;
+            if (!MatchAt(data, i, anchor)) continue;
+            anchors.Add(i);
+            i += anchor.Length - 1;
+        }
+        if (anchors.Count == 0) return result;
 
-            var isLabel = t.EndsWith(":", StringComparison.Ordinal) || t.EndsWith("：", StringComparison.Ordinal);
-            if (!isLabel && !LooksLikeSample(t)) continue;
-            if (!seen.Add(t)) continue;
-            result.Add(new LsdConstText(t, i, isLabel));
-            i += len;
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var from = 200;   // 文件头之后
+        foreach (var a in anchors)
+        {
+            var end = Math.Min(data.Length, a + anchor.Length + 60);
+            var bestOffset = -1;
+            string? best = null;
+            for (var i = from; i < end - 1; i++)
+            {
+                var len = data[i];
+                if (len is < 2 or > 40 || i + 1 + len > end) continue;
+                // 严格 GBK：非法字节序列直接判为噪声，不产生替换字符
+                string body;
+                try { body = StrictGbk.GetString(data, i + 1, len); }
+                catch (DecoderFallbackException) { continue; }
+                var t = body.Trim();
+                if (!IsCleanRecordText(t) || IsNoise(t, title, printer)) continue;
+                if (RecordNoiseRegex.IsMatch(t)) continue;
+                bestOffset = i;
+                best = t;      // 取段内最靠近锚点的候选（固定模板之后就是主文字）
+            }
+            if (best != null && seen.Add(best))
+            {
+                var isLabel = best.EndsWith(":", StringComparison.Ordinal) ||
+                              best.EndsWith("：", StringComparison.Ordinal);
+                result.Add(new LsdConstText(best, bestOffset, isLabel));
+            }
+            from = a + anchor.Length + 1;
         }
         return result;
     }
 
-    /// <summary>压缩编码块（自定义 85 字符集，含 QX … &gt;&lt;）范围，块内字符不作文本解析。</summary>
-    private static List<(int A, int B)> EncodedRanges(byte[] data)
+    /// <summary>严格 GBK 解码器：遇到非法字节直接抛错，避免把位图/压缩数据读成中文乱码。</summary>
+    private static readonly Encoding StrictGbk =
+        Encoding.GetEncoding(936, EncoderFallback.ReplacementFallback, DecoderFallback.ExceptionFallback);
+
+    private static readonly Regex RecordNoiseRegex =
+        new(@"^[QX][A-Za-z0-9+<>.]{6,}$", RegexOptions.Compiled);
+
+    /// <summary>对象主文字：ASCII 可打印 / 常用汉字 / 常见标点，不含控制字符与生僻符号。</summary>
+    private static bool IsCleanRecordText(string t)
     {
-        var ranges = new List<(int, int)>();
-        var start = -1;
-        for (var i = 0; i <= data.Length; i++)
+        if (t.Length is < 2 or > 40) return false;
+        // 对象记录里的「变量值表」长串（|A|UX2115|E4Eb1H|…）不是标签上的显示文字
+        if (t.Length > 20 && (t.Contains('|') || t.Contains('}'))) return false;
+        foreach (var c in t)
         {
-            var ok = i < data.Length && data[i] is >= 0x21 and <= 0x7a;
-            if (ok) { if (start < 0) start = i; }
-            else if (start >= 0)
-            {
-                if (i - start >= 16)
-                {
-                    for (var k = start; k + 1 < i; k++)
-                    {
-                        if (data[k] != 'Q' || data[k + 1] != 'X') continue;
-                        ranges.Add((Math.Max(0, start - 4), Math.Min(data.Length, i + 4)));
-                        break;
-                    }
-                }
-                start = -1;
-            }
+            if (c is >= ' ' and <= '~') continue;
+            if (c is >= '\u4e00' and <= '\u9fa5') continue;
+            if (c is '：' or '。' or '（' or '）' or '、' or '，') continue;
+            return false;
         }
-        return ranges;
+        return true;
     }
 
-    private static bool InRanges(int at, List<(int A, int B)> ranges) =>
-        ranges.Any(r => r.A <= at && at < r.B);
+    private static bool MatchAt(byte[] data, int at, byte[] needle)
+    {
+        for (var k = 0; k < needle.Length; k++)
+            if (data[at + k] != needle[k]) return false;
+        return true;
+    }
 
     private static bool IsNoise(string t, string? title, string? printer)
     {
@@ -369,24 +363,120 @@ public static class LsdImportService
         return false;
     }
 
-    private static bool LooksLikeSample(string t) =>
-        t.Length is >= 2 and <= 40
-        && t.All(c => char.IsLetterOrDigit(c) || c is ' ' or '.' or '_' or '-' or '/' or '+' or '#' or ':' or '：')
-        && t.Any(char.IsLetterOrDigit);
+    /// <summary>
+    /// 标签规范化：去掉末尾冒号/句点，让 "Part No.:" / "Part No:" / "Part No."
+    /// 都归一为 "Part No"，避免同一标签在不同 .lsd 里绑不上变量或排错行序。
+    /// </summary>
+    private static string NormalizeLabel(string label) =>
+        label.Trim().TrimEnd(':', '：', '.').Trim();
 
-    /// <summary>用样例值的形态猜它属于哪个变量（只影响预览 Sample，不影响模板结构）。</summary>
-    private static string? GuessSampleKey(string sample)
+    /// <summary>
+    /// 标签的视觉行序。.lsd 的对象记录顺序是「对象创建顺序」，不是标签从上到下的顺序
+    /// （UX5176S 记录序是 PO#/Part No/Q'TY/Lot No/Date Code/Package/BIN，视觉序却是
+    /// PO#/Part No/Package/Date Code/Lot No/Q'TY/BIN）。因此按行业通用字段顺序给 rank，
+    /// 未知标签排末尾并保持记录顺序。
+    /// 大小写必须敏感：UX51xx 用 "Date Code"（第 4 行），TIA 用 "DATE CODE"（倒数第 2 行）。
+    /// </summary>
+    private static int LabelVisualRank(string label)
     {
-        var s = sample.Trim();
-        if (Regex.IsMatch(s, @"^WX[-_]", RegexOptions.IgnoreCase) ||
-            (s.Length >= 10 && s.Count(c => c == '-') >= 2)) return "order";      // WX-251219-03
-        if (Regex.IsMatch(s, @"^[A-Za-z]\d{4,7}\.\d+$")) return "lot";             // N41474.1
-        if (Regex.IsMatch(s, @"^\d{4}$")) return "dcode";                           // 2640
-        if (Regex.IsMatch(s, @"^\d{4,7}$")) return "qty";                           // 10208
-        if (Regex.IsMatch(s, @"^[A-Za-z0-9]{6,10}$") &&
-            s.Any(char.IsUpper) && s.Any(char.IsLower) && s.Any(char.IsDigit)) return "batch"; // C2Fx2X8
-        if (Regex.IsMatch(s, @"^[A-Z]{2,4}\d{3,6}[A-Za-z]?$")) return "partno";    // UX2091
+        var k = NormalizeLabel(label);
+        if (k is "订单号" or "PO#" or "PO" or "Order") return 0;
+        if (k is "产品型号" or "Part No" or "Part NO" or "PartNo" or "型号") return 10;
+        if (k is "Package" or "package" or "PACKAGE" or "批号" or "批次号") return 20;
+        if (k is "Date Code" or "Date code") return 30;
+        if (k is "Lot No" or "Lot NO" or "LOT ID" or "L/N" or "lot no" or "Lot Id") return 40;
+        if (k is "片号") return 42;
+        if (k is "编号") return 44;
+        if (k is "Q'TY" or "QTY" or "数量") return 50;
+        if (k is "DATE CODE" or "DC" or "D/C") return 55;
+        if (k is "BIN" or "bin" or "Bin") return 60;
+        if (k is "Track ID" or "Tracking NO" or "Tracking No") return 70;
+        return 100;
+    }
+
+    private static List<string> VisualOrderedLabels(IEnumerable<string> labels) =>
+        labels.Select((t, i) => (Text: t, Index: i))
+              .OrderBy(x => LabelVisualRank(x.Text))
+              .ThenBy(x => x.Index)
+              .Select(x => x.Text)
+              .ToList();
+
+    /// <summary>把标签绑定到当前模板里实际存在、且尚未被占用的变量 key。</summary>
+    private static string? BindLabelKey(string label, List<TemplateVar> variables,
+        HashSet<string> usedKeys)
+    {
+        foreach (var c in LabelKeyCandidates(label))
+            if (variables.Any(v => v.Key == c) && usedKeys.Add(c)) return c;
         return null;
+    }
+
+    /// <summary>
+    /// 按标签语义从样例值里挑一个最像的值。认领过的样例值不再参与后续匹配，
+    /// 剩下未被认领的就是「右栏独立文字」（如 5176 / S02T4H1 / MSL:3）。
+    /// 4 位纯数字留给 DATE CODE，数量只认 5~7 位，避免两者互抢。
+    /// </summary>
+    private static string? PickSampleForLabel(string label, List<string> pool,
+        HashSet<string> used)
+    {
+        var k = NormalizeLabel(label);
+        string? Pick(Func<string, bool> pred) =>
+            pool.FirstOrDefault(s => !used.Contains(s) && pred(s));
+        return k switch
+        {
+            "订单号" or "PO#" or "Order" or "一维码" =>
+                Pick(s => Regex.IsMatch(s, @"^[A-Za-z]{1,4}[-_]\d{6}[-_]\d{2}", RegexOptions.IgnoreCase))
+                ?? Pick(s => s.Length >= 10 && s.Count(c => c == '-') >= 2),
+            "产品型号" or "Part No" or "Part NO" or "PartNo" or "型号" =>
+                Pick(s => Regex.IsMatch(s, @"^[A-Z]{2,4}\d{3,5}[A-Z0-9]*$")),
+            "Package" or "package" or "PACKAGE" =>
+                Pick(s => s.Contains('*') ||
+                          Regex.IsMatch(s, @"^(QFN|BGA|QFP|SOP|SOT|DFN|LGA)", RegexOptions.IgnoreCase)),
+            "Date Code" or "Date code" =>
+                Pick(s => Regex.IsMatch(s, @"^[A-Z0-9]{9,11}$") && s.Any(char.IsDigit) && s.Any(char.IsUpper)),
+            "DATE CODE" or "DC" or "D/C" =>
+                Pick(s => Regex.IsMatch(s, @"^\d{4}$")),
+            // UX51xx 的 Lot No / L/N 是 S7T405；TIA 的 LOT ID 是 N41474.1、
+            // 批号是 C2Fx2X8，三者形态不同，分开匹配才不会互抢。
+            "Lot No" or "Lot NO" or "L/N" or "lot no" =>
+                Pick(s => Regex.IsMatch(s, @"^[A-Z]\d[A-Z]\d{3}$")),
+            "LOT ID" or "Lot Id" =>
+                Pick(s => Regex.IsMatch(s, @"^[A-Z]\d{5}\.\d$"))
+                ?? Pick(s => Regex.IsMatch(s, @"^[A-Za-z0-9]{6,10}$")
+                            && s.Any(char.IsUpper) && s.Any(char.IsLower) && s.Any(char.IsDigit)),
+            "批号" or "批次号" =>
+                Pick(s => Regex.IsMatch(s, @"^[A-Za-z0-9]{6,10}$")
+                         && s.Any(char.IsUpper) && s.Any(char.IsLower) && s.Any(char.IsDigit)),
+            "Q'TY" or "QTY" or "数量" =>
+                Pick(s => Regex.IsMatch(s, @"^\d{5,7}$")),
+            "BIN" or "bin" or "Bin" =>
+                Pick(s => s.StartsWith("BIN", StringComparison.OrdinalIgnoreCase)),
+            _ => null,
+        };
+    }
+
+    /// <summary>
+    /// 样例值 → 变量预览值，并返回「未被标签认领」的值供右栏独立文字使用。
+    /// 旧版按剩余变量顺序兜底回填，会把 BIN1 / pcs / MSL:3 错配到 seq3 / lot3 / dcode3。
+    /// </summary>
+    private static (Dictionary<string, string> ByKey, List<string> Free) BuildSamples(
+        LsdImportResult r, List<TemplateVar> variables)
+    {
+        var pool = r.SampleValues
+            .Where(s => s.Length is >= 2 and <= 30)
+            .Where(s => !Regex.IsMatch(s, @"^12345678$"))   // 输入模板占位，不是真实值
+            .ToList();
+        var usedSamples = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var usedKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var byKey = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var label in VisualOrderedLabels(r.StaticLabels))
+        {
+            var sample = PickSampleForLabel(label, pool, usedSamples);
+            if (sample != null) usedSamples.Add(sample);
+            var key = BindLabelKey(label, variables, usedKeys);
+            if (key != null && sample != null) byKey[key] = sample;
+        }
+        return (byKey, pool.Where(s => !usedSamples.Contains(s)).ToList());
     }
 
     private static List<string> FindFonts(byte[] data)
@@ -437,13 +527,6 @@ public static class LsdImportService
     public static TemplateDoc BuildDoc(LsdImportResult r, string code, string name,
         double widthMm, double heightMm, int dpi)
     {
-        var sampleByKey = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var t in r.ConstTexts.Where(t => !t.IsLabel))
-        {
-            var k = GuessSampleKey(t.Text);
-            if (k != null) sampleByKey.TryAdd(k, t.Text);
-        }
-
         var variables = new List<TemplateVar>();
         var used = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         for (var i = 0; i < r.RawVariableNames.Count; i++)
@@ -457,13 +540,16 @@ public static class LsdImportService
                 Label = raw,
                 Short = shortName,
                 Source = "scan",
-                // 有 .lsd 样例值就用真实值预览；否则必须是 ASCII 占位符（Code128 编不了中文）
-                Sample = sampleByKey.TryGetValue(key, out var s) ? s : $"[{key}]",
                 SortNo = i,
             });
         }
 
-        var elements = BuildElements(r, variables);
+        // 样例值按标签语义回填（只影响预览）；未被认领的值交给右栏独立文字
+        var (sampleByKey, freeSamples) = BuildSamples(r, variables);
+        foreach (var v in variables)
+            v.Sample = sampleByKey.TryGetValue(v.Key, out var s) ? s : $"[{v.Key}]";
+
+        var elements = BuildElements(r, variables, freeSamples);
         var sx = r.WidthMm > 0 ? widthMm / r.WidthMm : 1.0;
         var sy = r.HeightMm > 0 ? heightMm / r.HeightMm : 1.0;
         if (Math.Abs(sx - 1) > 1e-6 || Math.Abs(sy - 1) > 1e-6)
@@ -505,7 +591,8 @@ public static class LsdImportService
         };
     }
 
-    private static List<TemplateElement> BuildElements(LsdImportResult r, List<TemplateVar> variables)
+    private static List<TemplateElement> BuildElements(LsdImportResult r,
+        List<TemplateVar> variables, List<string> freeSamples)
     {
         var width = r.WidthMm;
         var height = r.HeightMm;
@@ -527,6 +614,8 @@ public static class LsdImportService
 
         (double X, double Y, double W, double H)? barcode = null;
         (double X, double Y, double Size)? qr = null;
+        // 一个标签可能有多个二维码（如 UX5176S 右上 + 右下），全部收集，按位置依次绑定 qr1/qr2…
+        var qrs = new List<(double X, double Y, double Size)>();
         var shapes = new List<(double X, double Y, double W, double H, string Type)>();
         var texts = new List<LsdBox>();
 
@@ -550,10 +639,7 @@ public static class LsdImportService
             }
             if (hint == "文本")
             {
-                if (Math.Abs(w - h) <= 0.3 && w >= 8)
-                {
-                    if (qr == null || w > qr.Value.Size) qr = (x1, y1, w);
-                }
+                if (Math.Abs(w - h) <= 0.3 && w >= 8) AddQr(x1, y1, w);
                 else texts.Add(b);
                 continue;
             }
@@ -562,7 +648,7 @@ public static class LsdImportService
             // 无提示 → 几何推断
             if (Math.Abs(w - h) <= 0.3 && w >= 8)
             {
-                if (qr == null || w > qr.Value.Size) qr = (x1, y1, w);
+                AddQr(x1, y1, w);
             }
             else if (w > 20 && h > 6)
             {
@@ -574,13 +660,20 @@ public static class LsdImportService
             }
         }
 
+        // 二维码去重（同一框可能被颜色字记录与类名记录各读到一次）
+        void AddQr(double x, double y, double size)
+        {
+            if (qrs.Any(q => Math.Abs(q.X - x) < 1.0 && Math.Abs(q.Y - y) < 1.0)) return;
+            qrs.Add((x, y, size));
+            if (qr == null || size > qr.Value.Size) qr = (x, y, size);
+        }
+
         var elements = new List<TemplateElement>();
 
         // 一维码：内容优先绑订单号，其次追踪号，再退到第一个变量
         var barVar = variables.FirstOrDefault(v => v.Key == "order")
                      ?? variables.FirstOrDefault(v => v.Key.StartsWith("track", StringComparison.OrdinalIgnoreCase))
                      ?? variables.FirstOrDefault();
-        var qrVar = variables.FirstOrDefault(v => v.Key.StartsWith("qr", StringComparison.OrdinalIgnoreCase));
         var barBottom = 0.0;
 
         if (barcode.HasValue)
@@ -599,105 +692,152 @@ public static class LsdImportService
             barBottom = by + bh;
         }
 
-        // ---------- 正文：用 .lsd 的真实文本包围盒按行 1:1 重建 ----------
-        // 旧实现把 texts 整包丢弃，改按变量名表铺栅格，导致行数变多、字号被压小、
-        // 标签与值被拆成两列。这里改为：同 y 的框合成一行，位置/宽高/字号全部取实测值，
-        // 内容用 .lsd 明文段读出的静态标签并绑定对应变量。
+        // ---------- 正文：按真实包围盒的几何位置重建 ----------
+        // .lsd 把「文字内容」和「对象包围盒」分成两段独立序列化，顺序不对应。
+        // 因此：按 y 把文本框分组得到真实行位，按 x 区分「左栏标签行」与「右栏独立文字」；
+        // 标签按行业通用视觉序均匀铺在实测首末行之间（实测包围盒常漏记 1 行），
+        // 右栏独立文字用「未被标签认领的样例值」按框宽就近匹配。
         if (texts.Count > 0)
         {
-            var left = texts.Min(b => b.X1) / 100.0;
-            var rows = texts
-                .GroupBy(b => Math.Round(b.Y1 / 100.0, 1))
-                .OrderBy(g => g.Key)
-                .Select(g => g.OrderBy(b => b.X1).ToList())
-                .ToList();
-
-            var labels = r.StaticLabels;
-            var labelIdx = 0;
-            var fallback = variables.Where(v => v != barVar && v != qrVar).ToList();
-            var fallbackIdx = 0;
             var font = r.Fonts.FirstOrDefault(f => f.Any(c => c > 0x2E80)) ?? r.Fonts.FirstOrDefault();
+            var rowH = texts.GroupBy(b => Math.Round((b.Y2 - b.Y1) / 100.0, 1))
+                .OrderByDescending(g => g.Count()).ThenBy(g => g.Key).First().Key;
 
-            // 行距：相邻行 y 的中位数，用于补齐末尾缺失包围盒的文字行
-            var ys = rows.Select(g => g.Min(b => b.Y1) / 100.0).ToList();
-            var gaps = ys.Zip(ys.Skip(1), (a, b) => b - a).Where(g => g > 0.5).OrderBy(g => g).ToList();
-            var pitch = gaps.Count > 0 ? gaps[gaps.Count / 2] : 4.0;
-            var rowH = rows[0].Max(b => b.Y2) / 100.0 - rows[0].Min(b => b.Y1) / 100.0;
+            // 左右分栏：右栏至少要有两个框，避免把单栏模板里偏右的「值框」误判为右栏
+            var mid = width * 0.55;
+            var rightBoxes = texts.Where(b => b.X1 / 100.0 >= mid).ToList();
+            var split = rightBoxes.Count >= 2;
+            if (!split) rightBoxes.Clear();
+            var leftBoxes = split ? texts.Where(b => b.X1 / 100.0 < mid).ToList() : texts;
 
-            void AddRow(string text, double y, double w, double h)
+            // 同一行的「标签框 + 值框」y 常有 0.08mm 级差，容差 0.6mm 合并
+            List<List<LsdBox>> GroupRows(IEnumerable<LsdBox> src)
             {
-                var sizeMm = Math.Clamp(Math.Round(h * 0.9, 2), 1.2, 12.0);
+                var groups = new List<List<LsdBox>>();
+                foreach (var b in src.OrderBy(b => b.Y1).ThenBy(b => b.X1))
+                {
+                    var y = b.Y1 / 100.0;
+                    var g = groups.LastOrDefault(t => Math.Abs(t.Average(u => u.Y1 / 100.0) - y) < 0.6);
+                    if (g == null) groups.Add(g = new List<LsdBox>());
+                    g.Add(b);
+                }
+                return groups;
+            }
+            var rows = GroupRows(leftBoxes);
+            var rightRows = GroupRows(rightBoxes);
+
+            var labels = VisualOrderedLabels(r.StaticLabels);
+            if (labels.Count == 0)
+                labels = variables
+                    .Where(v => !v.Key.StartsWith("qr", StringComparison.OrdinalIgnoreCase))
+                    .Take(8).Select(v => (v.Short ?? v.Key) + "：").ToList();
+
+            var usedKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            string? Bind(string label) => BindLabelKey(label, variables, usedKeys);
+
+            // 统一 x / 右边界：个别窄框（如 0.85mm 分隔框）会把整行字压得极小，必须统一
+            var leftX = leftBoxes.Min(b => b.X1) / 100.0;
+            var measuredRight = leftBoxes.Max(b => b.X2) / 100.0;
+            var qrLeft = qrs.Count > 0 ? qrs.Min(q => q.X) : width;
+            var rightLeft = rightRows.Count > 0
+                ? rightRows.Min(g => g.Min(b => b.X1) / 100.0) : width;
+            var rightEdge = Math.Min(width - 1.0,
+                Math.Max(measuredRight + 1.5, Math.Min(qrLeft, rightLeft) - 1.0));
+            var rowW = Math.Max(8.0, rightEdge - leftX);
+
+            // 实测首末行之间均匀铺所有标签，补齐漏记行且不越界
+            var y0 = rows.Count > 0 ? rows.Min(g => g.Min(b => b.Y1) / 100.0) : 2.0;
+            var yLast = rows.Count > 0 ? rows.Max(g => g.Min(b => b.Y1) / 100.0) : y0 + rowH * 6;
+            var n = labels.Count;
+            var step = n > 1 ? (yLast - y0) / (n - 1) : rowH + 1.0;
+
+            // 中文标签原模板多为黑体（粗），纯西文标签（Arial）保持常规字重
+            var bold = labels.Any(l => l.Any(c => c > 0x2E80));
+            var unitWord = freeSamples.FirstOrDefault(s =>
+                string.Equals(s, "pcs", StringComparison.OrdinalIgnoreCase));
+
+            for (var i = 0; i < n; i++)
+            {
+                var label = labels[i];
+                var key = Bind(label);
+                // 原标签西文冒号后带一个空格（PO#: WX-...），中文全角冒号自带间距
+                var gap = label.Any(c => c > 0x2E80) ? "" : " ";
+                var text = label + (key != null ? gap + "{{" + key + "}}" : "");
+                var bare = NormalizeLabel(label);
+                if (unitWord != null &&
+                    (bare.Equals("Q'TY", StringComparison.OrdinalIgnoreCase) ||
+                     bare.Equals("QTY", StringComparison.OrdinalIgnoreCase) || bare == "数量"))
+                    text += " " + unitWord;
+                AddText(leftX, Math.Round(y0 + i * step, 2), rowW, rowH, text, font, bold);
+            }
+
+            // 右栏独立文字（如 5176 / S02T4H1 / MSL:3）：只用未被标签认领的样例值
+            var usedFree = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var row in rightRows.OrderBy(g => g.Min(b => b.Y1)))
+            {
+                var rx = row.Min(b => b.X1) / 100.0;
+                var ry = row.Min(b => b.Y1) / 100.0;
+                var rw = Math.Max(4.0, row.Max(b => b.X2) / 100.0 - rx);
+                var rh = Math.Max(1.2, row.Max(b => b.Y2) / 100.0 - ry);
+                var targetEm = rw / Math.Max(1.0, rh * 0.9);
+                var best = freeSamples
+                    .Where(s => !usedFree.Contains(s) && s.Length >= 2)
+                    .Where(s => !string.Equals(s, unitWord, StringComparison.OrdinalIgnoreCase))
+                    .OrderBy(s => Math.Abs(TextWidth(s) - targetEm))
+                    .FirstOrDefault();
+                if (best == null) continue;
+                usedFree.Add(best);
+                AddText(rx, ry, Math.Min(rw, width - rx - 1.0), rh, best, font, bold);
+            }
+
+            void AddText(double x, double y, double w, double h, string text,
+                string? fontName, bool isBold)
+            {
                 elements.Add(new TemplateElement
                 {
-                    Type = "text", X = Math.Round(left, 2), Y = Math.Round(y, 2),
-                    W = Math.Round(w, 2), H = Math.Round(h, 2),
-                    Text = text, Font = font, Bold = true,
-                    SizeMm = sizeMm, Align = "left", Valign = "middle",
+                    Type = "text", X = Math.Round(x, 2), Y = Math.Round(y, 2),
+                    W = Math.Round(w, 2), H = Math.Round(Math.Max(1.2, h), 2),
+                    Text = text, Font = fontName, Bold = isBold,
+                    SizeMm = Math.Clamp(Math.Round(Math.Max(1.2, h) * 0.9, 2), 1.2, 12.0),
+                    Align = "left", Valign = "middle",
                 });
-            }
-
-            string? NextText()
-            {
-                if (labelIdx < labels.Count)
-                {
-                    var label = labels[labelIdx++];
-                    var key = LabelKey(label);
-                    var v = key != null ? variables.FirstOrDefault(x => x.Key == key) : null;
-                    return v != null ? label + "{{" + v.Key + "}}" : label;
-                }
-                if (fallbackIdx < fallback.Count)
-                {
-                    var v = fallback[fallbackIdx++];
-                    return (v.Short ?? v.Label ?? v.Key) + "：{{" + v.Key + "}}";
-                }
-                return null;
-            }
-
-            // 所有正文行用同一个 W（左边界 → 二维码左侧）：
-            // .lsd 里有些行只记录了「值」的小框、没记录标签框，若按各自实测宽度给 W，
-            // 渲染器会把短行自适应缩小，出现图1 那种「字号忽大忽小」。统一宽度后字号一致。
-            var rightLimit = qr.HasValue
-                ? Math.Min(width - 1.5, qr.Value.X - 1.0)
-                : width - 1.5;
-            var rowW = Math.Max(6.0, rightLimit - left);
-            // 补出来的行以标签纸下沿为硬边界；边框底缘允许略微越过（末行文字本就贴着框底）
-            var paperBottom = height - 0.3;
-
-            // 行数以静态标签为准：.lsd 常漏记末尾 1~2 行的颜色字记录（如「BIN:」）。
-            // 多余行不追加到框外，而是把全部行均匀铺在实测首末行区间内 —— 版面仍基于
-            // 实测坐标，字号统一，且末行能留在边框内。
-            var firstY = ys[0];
-            var lastY = ys[^1];
-            var target = Math.Clamp(labels.Count, rows.Count, rows.Count + 2);
-            var step = target > 1 ? (lastY - firstY) / (target - 1) : pitch;
-            var lineH = Math.Min(rowH, Math.Max(1.2, step * 0.95));
-
-            for (var i = 0; i < target; i++)
-            {
-                var y = firstY + i * step;
-                if (y + lineH > paperBottom) break;
-                var text = NextText();
-                if (text == null) break;
-                AddRow(text, y, rowW, lineH);
             }
         }
         else if (barcode.HasValue)
         {
             // 极少数样本读不到文本包围盒：退回旧栅格，保证仍生成可用模板
-            BuildFallbackBody(r, variables, barVar, qrVar, qr, barBottom, elements);
+            BuildFallbackBody(r, variables, barVar,
+                variables.FirstOrDefault(v => v.Key.StartsWith("qr", StringComparison.OrdinalIgnoreCase)),
+                qr, barBottom, elements);
         }
 
-        // 二维码
-        if (qr.HasValue && qr.Value.Size > 0)
+        // 二维码：按从上到下顺序依次绑定 qr1 / qr2…
+        var qrVars = variables.Where(v => v.Key.StartsWith("qr", StringComparison.OrdinalIgnoreCase)).ToList();
+        var orderedQrs = qrs.OrderBy(q => q.Y).ThenBy(q => q.X).ToList();
+        // 部分 .lsd（如 UX5176S）第二个二维码没有颜色字包围盒记录，但变量表里明确有
+        // qr1/qr2。按第一个二维码的 x/size 在幅面下方补位，避免右侧整块留空。
+        if (qrVars.Count > orderedQrs.Count && orderedQrs.Count > 0)
         {
-            var qs = qr.Value.Size;
-            var qx = Math.Min(Math.Max(1.5, qr.Value.X), Math.Max(1.5, width - qs - 1.5));
-            var qy = Math.Min(Math.Max(1.5, qr.Value.Y), Math.Max(1.5, height - qs - 1.0));
+            var first = orderedQrs[0];
+            for (var i = orderedQrs.Count; i < qrVars.Count; i++)
+            {
+                var y = height - first.Size - 2.0 - (i - 1) * (first.Size + 2.0);
+                if (y < first.Y + first.Size + 1.0) break;
+                orderedQrs.Add((first.X, y, first.Size));
+            }
+        }
+        for (var i = 0; i < orderedQrs.Count; i++)
+        {
+            var q = orderedQrs[i];
+            var qs = q.Size;
+            var qx = Math.Min(Math.Max(1.5, q.X), Math.Max(1.5, width - qs - 1.5));
+            var qy = Math.Min(Math.Max(1.5, q.Y), Math.Max(1.5, height - qs - 1.0));
+            var v = i < qrVars.Count ? qrVars[i] : null;
             elements.Add(new TemplateElement
             {
                 Type = "qrcode", X = Math.Round(qx, 2), Y = Math.Round(qy, 2),
                 W = Math.Round(qs, 2), H = Math.Round(qs, 2), SizeMm = Math.Round(qs, 2),
-                Text = qrVar != null ? "{{" + qrVar.Key + "}}" : "[qr]",
+                Text = v != null ? "{{" + v.Key + "}}" : "[qr]",
                 Valign = "middle",
             });
         }
@@ -744,13 +884,64 @@ public static class LsdImportService
         return elements;
     }
 
-    private static string? LabelKey(string label)
+    /// <summary>
+    /// 估算文字渲染宽度（em 单位），仅用于「文字 ↔ 包围盒」的排序匹配：
+    /// 中文按 1em、西文大写按 0.62em、小写/数字按 0.55em、标点按 0.3em。
+    /// 不需要绝对精确，只要相对顺序稳定即可。
+    /// </summary>
+    private static double TextWidth(string s)
     {
-        var k = label.Trim().TrimEnd(':', '：').Trim();
-        if (LabelKeyMap.TryGetValue(k, out var key)) return key;
+        double w = 0;
+        foreach (var c in s)
+        {
+            if (c > 0x2E80) w += 1.0;
+            else if (char.IsUpper(c)) w += 0.62;
+            else if (char.IsLetterOrDigit(c)) w += 0.55;
+            else w += 0.3;
+        }
+        return w;
+    }
+
+    /// <summary>
+    /// 标签 → 候选变量 key。.lsd 有两套命名体系（TIA: order/partno/batch…；
+    /// UX51xx: track3/partno3/package3…），同一个标签在不同模板里对应不同 key，
+    /// 因此返回候选列表，由调用方按「当前模板实际存在的变量」挑选。
+    /// </summary>
+    private static string[] LabelKeyCandidates(string label)
+    {
+        var k = NormalizeLabel(label);
+        // 必须用 Ordinal：同时存在 Package/package、Part No/Part NO、Date Code/DATE CODE，
+        // 忽略大小写会造成重复键并让字典构造直接抛 ArgumentException。
+        var map = new Dictionary<string, string[]>(StringComparer.Ordinal)
+        {
+            ["订单号"] = new[] { "order", "track3", "track" },
+            ["PO#"] = new[] { "po", "track3", "order", "track" },
+            ["产品型号"] = new[] { "partno", "partno3", "part_no" },
+            ["Part No"] = new[] { "partno3", "partno", "part_no" },
+            ["Part NO"] = new[] { "partno3", "partno", "part_no" },
+            ["批号"] = new[] { "batch", "batch3", "batch2" },
+            ["Package"] = new[] { "package3", "package" },
+            ["package"] = new[] { "package3", "package" },
+            ["Date Code"] = new[] { "dcode3", "dcode2", "dcode" },
+            ["DATE CODE"] = new[] { "dcode", "dcode3", "dcode2" },
+            ["D/C"] = new[] { "dcode", "dcode3" },
+            ["Lot No"] = new[] { "lot3", "lot2", "lot" },
+            ["LOT ID"] = new[] { "lot", "lot3" },
+            ["Q'TY"] = new[] { "qty" },
+            ["QTY"] = new[] { "qty" },
+            ["数量"] = new[] { "qty" },
+            ["BIN"] = new[] { "bin", "bin3" },
+            ["Bin"] = new[] { "bin", "bin3" },
+            ["片号"] = new[] { "wafer" },
+            ["编号"] = new[] { "serial" },
+            ["Tracking NO"] = new[] { "track", "track3", "order", "po" },
+            ["Track ID"] = new[] { "track", "track3", "order", "po" },
+        };
+        if (map.TryGetValue(k, out var keys)) return keys;
+        if (LabelKeyMap.TryGetValue(k, out var single)) return new[] { single };
         foreach (var kv in LabelKeyMap)
-            if (string.Equals(kv.Key, k, StringComparison.OrdinalIgnoreCase)) return kv.Value;
-        return null;
+            if (string.Equals(kv.Key, k, StringComparison.OrdinalIgnoreCase)) return new[] { kv.Value };
+        return Array.Empty<string>();
     }
 
     /// <summary>读不到文本包围盒时的兜底：按变量名表铺栅格（旧行为）。</summary>

@@ -1,5 +1,9 @@
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
 using Microsoft.Extensions.DependencyInjection;
 using UXLabelshop.Services;
 using UXLabelshop.ViewModels;
@@ -18,7 +22,36 @@ public partial class LoginWindow : Window
         // 回填保存的密码（PasswordBox 不能绑定，且不把明文放进 ViewModel 属性）
         if (!string.IsNullOrEmpty(_vm.SavedPassword))
             PwdBox.Password = _vm.SavedPassword!;
-        Loaded += (_, _) => StartWarmup();
+        VersionText.Text = $"UX_LabelShop Client  ·  v{UpdateService.CurrentVersion}";
+        Loaded += (_, _) =>
+        {
+            StartWarmup();
+            StartScanAnimation();
+        };
+    }
+
+    /// <summary>扫描线缓慢掠过芯片图；动画纯装饰，失败也不能影响登录。</summary>
+    private void StartScanAnimation()
+    {
+        try
+        {
+            var move = new DoubleAnimation(0, 620, TimeSpan.FromSeconds(7))
+            {
+                RepeatBehavior = RepeatBehavior.Forever,
+            };
+            var fade = new DoubleAnimation(0, 0.5, TimeSpan.FromSeconds(0.8))
+            {
+                AutoReverse = true,
+                RepeatBehavior = RepeatBehavior.Forever,
+            };
+            ((TranslateTransform)ScanLine.RenderTransform)
+                .BeginAnimation(TranslateTransform.YProperty, move);
+            ScanLine.BeginAnimation(UIElement.OpacityProperty, fade);
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "登录窗扫描线动画启动失败（忽略）");
+        }
     }
 
     private Task? _warmup;
@@ -41,6 +74,31 @@ public partial class LoginWindow : Window
         });
     }
 
+    // ---------- 无边框窗口：拖动 / 最小化 / 关闭 ----------
+
+    private void Root_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Left) return;
+        if (e.OriginalSource is not DependencyObject src) return;
+
+        // 输入框、按钮、复选框以及登录卡片内部都不触发拖动，避免抢焦点/误拖
+        for (var d = src; d != null; d = VisualTreeHelper.GetParent(d))
+        {
+            if (d is TextBoxBase or PasswordBox or ButtonBase or ScrollViewer) return;
+            if (ReferenceEquals(d, LoginCard)) return;
+            if (ReferenceEquals(d, RootGrid)) break;
+        }
+        try { DragMove(); }
+        catch (InvalidOperationException) { /* 鼠标未按下或已释放，忽略 */ }
+    }
+
+    private void MinimizeButton_Click(object sender, RoutedEventArgs e) =>
+        WindowState = WindowState.Minimized;
+
+    private void CloseButton_Click(object sender, RoutedEventArgs e) => Close();
+
+    // ---------- 登录 ----------
+
     private void LoginButton_Click(object sender, RoutedEventArgs e) => DoLogin();
 
     private void PwdBox_KeyDown(object sender, KeyEventArgs e)
@@ -60,9 +118,9 @@ public partial class LoginWindow : Window
         {
             if (_warmup is { IsCompleted: false })
             {
-                LoginButton.Content = "连接数据库…";
+                LoginButtonText.Text = "连接数据库…";
                 _warmup.Wait(TimeSpan.FromSeconds(30));
-                LoginButton.Content = "登 录";
+                LoginButtonText.Text = "登 录   →";
             }
 
             _vm.LoginCommand.Execute(PwdBox.Password);
@@ -75,7 +133,7 @@ public partial class LoginWindow : Window
                 dlg.Owner = this;
                 if (dlg.ShowDialog() != true)
                 {
-                    MessageBox.Show("首次登录必须修改密码后使用。", "提示");
+                    MessageBox.Show(this, "首次登录必须修改密码后使用。", "提示");
                     return;
                 }
             }

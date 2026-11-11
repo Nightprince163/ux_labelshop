@@ -448,7 +448,7 @@ public class VariableTestService
                 "0.3.0");
             CheckTrue("目录里没有匹配文件时不提示", UpdateService.ParseLatest("<html>empty</html>", "http://x/u/") == null);
             CheckTrue("升级地址默认关闭（未配置不联网）", new AppConfig().UpdateUrl == null);
-            Check("当前程序版本", UpdateService.CurrentVersion.ToString(), "0.4.0");
+            Check("当前程序版本", UpdateService.CurrentVersion.ToString(), "0.4.1");
 
             // 自检跑在 UI 线程（Dispatcher），同步等 async 会死锁；统一丢到线程池跑
             static T Sync<T>(Func<Task<T>> f) => Task.Run(f).GetAwaiter().GetResult();

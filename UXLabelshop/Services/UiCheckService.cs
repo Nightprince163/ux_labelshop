@@ -26,7 +26,8 @@ public class UiCheckService
         var lines = new List<string>();
 
         var login = _sp.GetRequiredService<LoginWindow>();
-        Save(login.Content as FrameworkElement, 420, 406, Path.Combine(outputDir, "01-login.png"), lines);
+        // 无边框科技风登录窗：1000×620（与 XAML 根 Border 一致，避免截图被拉伸）
+        Save(login.Content as FrameworkElement, 1000, 620, Path.Combine(outputDir, "01-login.png"), lines);
 
         // 登录失败态：错误提示必须可见
         try
@@ -38,7 +39,7 @@ public class UiCheckService
                 failVm.Username = "admin";
                 failVm.LoginCommand.Execute("wrong-password-123");
             }
-            Save(loginFail.Content as FrameworkElement, 420, 406,
+            Save(loginFail.Content as FrameworkElement, 1000, 620,
                 Path.Combine(outputDir, "01b-login-error.png"), lines);
         }
         catch (Exception ex)
@@ -533,7 +534,7 @@ public class UiCheckService
             var win = _sp.GetRequiredService<MainWindow>();
             Load(win);
             var hiddenByDefault = win.UpdateBanner.Visibility == Visibility.Collapsed;
-            win.UpdateBannerText.Text = "发现新版本 0.4.1（当前 0.4.0）　·　UXLabelshop_v0.4.1.exe";
+            win.UpdateBannerText.Text = "发现新版本 0.4.2（当前 0.4.1）　·　UXLabelshop_v0.4.2.exe";
             win.UpdateBanner.Visibility = Visibility.Visible;
             Save(win.Content as FrameworkElement, 1180, 760,
                 Path.Combine(outputDir, "12-update-banner.png"), lines);
