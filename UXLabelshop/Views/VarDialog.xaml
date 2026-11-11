@@ -1,0 +1,109 @@
+<Window x:Class="UXLabelshop.Views.VarDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="变量属性" Height="680" Width="470"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize" FontSize="13"
+        Icon="pack://application:,,,/Assets/app.ico">
+    <DockPanel>
+        <Border DockPanel.Dock="Bottom" Background="#F5F7FA" Padding="12" BorderBrush="#DDD" BorderThickness="0,1,0,0">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="取消" Width="80" Click="Cancel_Click" Margin="0,0,8,0"/>
+                <Button Content="确定" Width="90" Style="{StaticResource PrimaryButton}" Click="Ok_Click" IsDefault="True"/>
+            </StackPanel>
+        </Border>
+
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
+            <StackPanel>
+                <TextBlock x:Name="TitleText" Text="新增变量" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,12"/>
+
+                <TextBlock Text="变量 key（英文，正文里写作 {key}）"/>
+                <TextBox x:Name="KeyBox" Height="26" Margin="0,3,0,8" TextChanged="KeyBox_TextChanged"/>
+
+                <TextBlock Text="显示名称（清单列标题）"/>
+                <TextBox x:Name="LabelBox" Height="26" Margin="0,3,0,8"/>
+
+                <TextBlock Text="来源"/>
+                <ComboBox x:Name="SourceCombo" Height="26" Margin="0,3,0,8" SelectionChanged="SourceCombo_Changed">
+                    <ComboBoxItem Content="扫码录入（scan）" Tag="scan"/>
+                    <ComboBoxItem Content="固定值（fixed，不进清单）" Tag="fixed"/>
+                    <ComboBoxItem Content="公式计算（computed）" Tag="computed"/>
+                </ComboBox>
+
+                <TextBlock Text="样例值（编辑器预览 / 公式测试默认值）"/>
+                <TextBox x:Name="SampleBox" Height="26" Margin="0,3,0,8"/>
+
+                <!-- 缺省值与固定值并排，压缩纵向空间，让公式测试区同屏可见 -->
+                <Grid Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock x:Name="DefaultLabel" Text="缺省值（空值自动填，如 BIN1）"
+                                   TextTrimming="CharacterEllipsis"/>
+                        <TextBox x:Name="DefaultBox" Height="26" Margin="0,3,0,0"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock x:Name="ValueLabel" Text="固定值（source=fixed）"
+                                   TextTrimming="CharacterEllipsis"/>
+                        <TextBox x:Name="ValueBox" Height="26" Margin="0,3,0,0"/>
+                    </StackPanel>
+                </Grid>
+
+                <Separator Margin="0,2,0,8"/>
+                <TextBlock Text="公式（以 = 开头；变量用双花括号引用，如 part_no）" FontWeight="SemiBold"/>
+                <TextBox x:Name="FormulaBox" Height="52" Margin="0,3,0,5" AcceptsReturn="True"
+                         TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                         FontFamily="Consolas" FontSize="13"/>
+
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                    <TextBlock Text="插入函数" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <ComboBox x:Name="FuncCombo" Width="155" Height="24"
+                              SelectionChanged="FuncCombo_Changed">
+                        <ComboBoxItem Content="IF" Tag="IF(条件, 真值, 假值)"/>
+                        <ComboBoxItem Content="IFERROR" Tag="IFERROR(公式, 出错时的值)"/>
+                        <ComboBoxItem Content="SPLIT" Tag="SPLIT(文本, &quot;_&quot;, 1)"/>
+                        <ComboBoxItem Content="LEFT" Tag="LEFT(文本, 字数)"/>
+                        <ComboBoxItem Content="RIGHT" Tag="RIGHT(文本, 字数)"/>
+                        <ComboBoxItem Content="MID" Tag="MID(文本, 起始, 字数)"/>
+                        <ComboBoxItem Content="FIND" Tag="FIND(查找, 文本, 1)"/>
+                        <ComboBoxItem Content="SUBSTITUTE" Tag="SUBSTITUTE(文本, 旧, 新)"/>
+                        <ComboBoxItem Content="CONCAT" Tag="CONCAT(文本1, 文本2)"/>
+                        <ComboBoxItem Content="LEN / TRIM / UPPER / LOWER" Tag="UPPER(文本)"/>
+                        <ComboBoxItem Content="ROUND / INT / ABS / VALUE" Tag="ROUND(数字, 0)"/>
+                        <ComboBoxItem Content="DBLOOKUP（查库）" Tag="DBLOOKUP(&quot;SELECT 列名 FROM 表名 WHERE 键='{{变量}}'&quot;)"/>
+                    </ComboBox>
+                    <TextBlock Text="插入变量" VerticalAlignment="Center" Margin="12,0,6,0"/>
+                    <ComboBox x:Name="VarCombo" Width="125" Height="24" DisplayMemberPath="Key"
+                              SelectionChanged="VarCombo_Changed"/>
+                </StackPanel>
+
+                <TextBlock Text="公式测试值" Margin="0,4,0,4" Foreground="Gray"/>
+                <ItemsControl x:Name="TestInputs">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="130"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{Binding Key}" VerticalAlignment="Center" Foreground="#555"/>
+                                <TextBox Grid.Column="1" Height="24" Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                    <Button Content="测试公式" Width="90" Click="Test_Click"/>
+                    <TextBlock x:Name="ResultText" VerticalAlignment="Center" Margin="12,0,0,0"
+                               TextWrapping="Wrap" Width="300"/>
+                </StackPanel>
+
+                <TextBlock Text="提示：公式计算列会显示在扫码清单里（蓝底），依赖格变动时自动重算；也能手动改结果。"
+                           Foreground="Gray" TextWrapping="Wrap" FontSize="11" Margin="0,12,0,0"/>
+            </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
+</Window>

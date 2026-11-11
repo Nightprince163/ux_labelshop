@@ -1,0 +1,60 @@
+<Window x:Class="UXLabelshop.Views.VariablesWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="变量管理" Height="620" Width="880"
+        WindowStartupLocation="CenterOwner" FontSize="13"
+        Icon="pack://application:,,,/Assets/app.ico">
+    <DockPanel>
+        <Border DockPanel.Dock="Top" Background="#F5F7FA" Padding="12" BorderBrush="#DDD" BorderThickness="0,0,0,1">
+            <DockPanel>
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                    <Button Content="取消" Width="76" Click="Cancel_Click" Margin="0,0,8,0"/>
+                    <Button Content="保存" Width="90" Style="{StaticResource PrimaryButton}" Click="Save_Click"/>
+                </StackPanel>
+                <StackPanel>
+                    <TextBlock x:Name="TitleText" Text="变量管理" FontSize="15" FontWeight="SemiBold"/>
+                    <TextBlock Text="变量定义存于 label_template_var 子表；改动将作用于本模板的扫码清单与渲染。"
+                               Foreground="Gray" FontSize="11" Margin="0,2,0,0"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <Border DockPanel.Dock="Bottom" Background="#F5F7FA" Padding="12,6" BorderBrush="#DDD" BorderThickness="0,1,0,0">
+            <TextBlock x:Name="StatusText" Foreground="#2B579A" TextWrapping="Wrap"/>
+        </Border>
+
+        <DockPanel Margin="12">
+            <StackPanel DockPanel.Dock="Right" Width="120" Margin="12,0,0,0">
+                <Button Content="新增变量" Height="30" Click="Add_Click"/>
+                <Button Content="编辑…" Height="30" Margin="0,6,0,0" Click="Edit_Click"/>
+                <Button Content="删除" Height="30" Margin="0,6,0,0" Click="Delete_Click"/>
+                <Separator Margin="0,10"/>
+                <Button Content="上移" Height="30" Click="Up_Click"/>
+                <Button Content="下移" Height="30" Margin="0,6,0,0" Click="Down_Click"/>
+                <Separator Margin="0,10"/>
+                <Button Content="校验公式" Height="30" Click="Validate_Click"/>
+            </StackPanel>
+
+            <DataGrid x:Name="VarGrid" AutoGenerateColumns="False" CanUserAddRows="False"
+                      CanUserDeleteRows="False" CanUserSortColumns="False"
+                      HeadersVisibility="Column" GridLinesVisibility="All"
+                      SelectionMode="Single" MouseDoubleClick="VarGrid_DoubleClick">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="变量 key" Binding="{Binding Key}" Width="120" IsReadOnly="True"/>
+                    <DataGridTextColumn Header="显示名" Binding="{Binding Label}" Width="150" IsReadOnly="True"/>
+                    <DataGridTextColumn Header="来源" Binding="{Binding SourceText}" Width="90" IsReadOnly="True"/>
+                    <DataGridTextColumn Header="缺省值" Binding="{Binding DefaultValue}" Width="110" IsReadOnly="True"/>
+                    <DataGridTextColumn Header="公式 / 固定值" Binding="{Binding RuleText}" Width="*" IsReadOnly="True">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                <Setter Property="ToolTip" Value="{Binding RuleText}"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="样例值" Binding="{Binding Sample}" Width="130" IsReadOnly="True"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </DockPanel>
+    </DockPanel>
+</Window>

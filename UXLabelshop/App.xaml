@@ -1,0 +1,273 @@
+<Application x:Class="UXLabelshop.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             ShutdownMode="OnLastWindowClose">
+    <Application.Resources>
+        <SolidColorBrush x:Key="AccentBrush" Color="#2B579A"/>
+        <SolidColorBrush x:Key="AccentBrushLight" Color="#EAF0F9"/>
+        <SolidColorBrush x:Key="NavBrush" Color="#F3F5F8"/>
+        <Style TargetType="Button">
+            <Setter Property="Padding" Value="14,6"/>
+            <Setter Property="MinWidth" Value="72"/>
+        </Style>
+        <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+        <Style x:Key="NavButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Padding" Value="16,10"/>
+            <Setter Property="FontSize" Value="14"/>
+        </Style>
+
+        <!-- ============ 工具栏：矢量图标（16×16 填充轮廓，F0 = 奇偶填充挖空） ============ -->
+        <!-- 模板编辑器 -->
+        <Geometry x:Key="IcoText">M2,2 H14 V4.2 H9.2 V14 H6.8 V4.2 H2 Z</Geometry>
+        <Geometry x:Key="IcoBarcode">M1,3 H2.6 V13 H1 Z M4,3 H5.2 V13 H4 Z M6.6,3 H8.8 V13 H6.6 Z M10.2,3 H11.2 V13 H10.2 Z M12.6,3 H15 V13 H12.6 Z</Geometry>
+        <Geometry x:Key="IcoQr">F0 M1,1 H6.4 V6.4 H1 Z M2.3,2.3 H5.1 V5.1 H2.3 Z M9.6,1 H15 V6.4 H9.6 Z M10.9,2.3 H13.7 V5.1 H10.9 Z M1,9.6 H6.4 V15 H1 Z M2.3,10.9 H5.1 V13.7 H2.3 Z M8,8 H10 V10 H8 Z M11,8 H13 V10 H11 Z M8,11 H10 V13 H8 Z M11,11 H15 V13 H11 Z M8,14 H10 V15 H8 Z M11,14 H15 V15 H11 Z</Geometry>
+        <Geometry x:Key="IcoRect">F0 M1,3 H15 V13 H1 Z M2.3,4.3 H13.7 V11.7 H2.3 Z</Geometry>
+        <Geometry x:Key="IcoLine">M2,12.4 L12.2,2.2 L14.2,4.2 L4,14.4 Z</Geometry>
+        <Geometry x:Key="IcoImage">F0 M1,2 H15 V14 H1 Z M2.3,3.3 H13.7 V12.7 H2.3 Z M4.2,5.6 A1.1,1.1 0 1,1 6.4,5.6 A1.1,1.1 0 1,1 4.2,5.6 Z M3,11.6 L6.4,8.2 L9.2,10.6 L11.4,8.8 L13.6,11.6 Z</Geometry>
+        <Geometry x:Key="IcoPb">F0 M8,1.5 A6.5,6.5 0 1,1 8,14.5 A6.5,6.5 0 1,1 8,1.5 Z M8,3 A5,5 0 1,0 8,13 A5,5 0 1,0 8,3 Z M6.6,6.6 H9.4 V9.4 H6.6 Z</Geometry>
+        <Geometry x:Key="IcoUp">M8,1.5 L14,7.5 H11 V14 H5 V7.5 H2 Z</Geometry>
+        <Geometry x:Key="IcoDown">M8,14.5 L2,8.5 H5 V2 H11 V8.5 H14 Z</Geometry>
+        <Geometry x:Key="IcoUndo">M1.5,7 H9 V3.5 L14.5,8 L9,12.5 V9 H1.5 Z</Geometry>
+        <Geometry x:Key="IcoRedo">M14.5,7 H7 V3.5 L1.5,8 L7,12.5 V9 H14.5 Z</Geometry>
+        <Geometry x:Key="IcoDelete">F0 M2.8,4 H13.2 L12.2,14.5 H3.8 Z M6,1.5 H10 V3.2 H6 Z M5.2,5.6 H6 V12.8 H5.2 Z M7.6,5.6 H8.4 V12.8 H7.6 Z M10,5.6 H10.8 V12.8 H10 Z</Geometry>
+        <Geometry x:Key="IcoSave">F0 M1,1 H11.5 L15,4.5 V15 H1 Z M3,3 H9.5 V7 H3 Z M3.5,9 H12.5 V14 H3.5 Z</Geometry>
+        <Geometry x:Key="IcoPrint">M4,1 H12 V5 H4 Z M1,6 H15 V13 H12.5 V11 H3.5 V13 H1 Z M3.5,11 H12.5 V15 H3.5 Z</Geometry>
+        <Geometry x:Key="IcoPublish">M8,1 L14,7 H10.5 V11 H5.5 V7 H2 Z M2,12.5 H14 V15 H2 Z</Geometry>
+        <!-- 模板管理 -->
+        <Geometry x:Key="IcoNew">M6.5,1 H9.5 V6.5 H15 V9.5 H9.5 V15 H6.5 V9.5 H1 V6.5 H6.5 Z</Geometry>
+        <Geometry x:Key="IcoEdit">M2,11.6 L11,2.6 L13.4,5 L4.4,14 L1.6,14.4 Z M9.8,3.8 L12.2,6.2 L10.9,7.5 L8.5,5.1 Z</Geometry>
+        <Geometry x:Key="IcoCopy">M1,1.5 H9.5 V10.5 H1 Z M6.5,5.5 H15 V15 H6.5 Z M8,7 H13.5 V13.5 H8 Z</Geometry>
+        <Geometry x:Key="IcoDisable">M4,3 H6.6 V13 H4 Z M9.4,3 H12 V13 H9.4 Z</Geometry>
+        <Geometry x:Key="IcoRules">M1.5,2.5 H4 V5 H1.5 Z M5.8,2.6 H14.5 V4.9 H5.8 Z M1.5,6.9 H4 V9.4 H1.5 Z M5.8,7 H14.5 V9.3 H5.8 Z M1.5,11.3 H4 V13.8 H1.5 Z M5.8,11.4 H14.5 V13.7 H5.8 Z</Geometry>
+        <Geometry x:Key="IcoVar">M1,3.6 H15 V5 H1 Z M1,10.8 H15 V12.2 H1 Z M4.4,1.8 H6.4 V7.2 H4.4 Z M9.6,9 H11.6 V14.4 H9.6 Z</Geometry>
+
+        <!-- ============ 属性面板：文字样式 / 对齐（图标式开关，选中态带圆角边框） ============ -->
+        <Geometry x:Key="IcoBold">F0 M3,2 H8.4 C10.4,2 11.5,3 11.5,4.5 C11.5,5.4 11.1,6.1 10.3,6.5 C11.4,6.9 12.2,7.7 12.2,9.1 C12.2,10.9 10.7,12 8.6,12 H3 Z M5.3,4 V5.9 H8.1 C8.9,5.9 9.3,5.6 9.3,4.95 C9.3,4.3 8.9,4 8.1,4 Z M5.3,7.8 V10 H8.4 C9.4,10 9.9,9.6 9.9,8.9 C9.9,8.2 9.4,7.8 8.4,7.8 Z</Geometry>
+        <Geometry x:Key="IcoItalic">M4.5,2.5 H11 V4 H4.5 Z M4,12 H10.5 V13.5 H4 Z M6.9,4 H9.1 L7.1,12 H4.9 Z</Geometry>
+        <!-- 自动换行：ab 上行 / c 下行（文字渲染） + 右下蓝色折返箭头 ↵ -->
+        <Geometry x:Key="IcoWrapArrow">M6.2,1 H7.6 V6 H2.4 V4.6 H6.2 Z M3.2,3 L1,5.3 L3.2,7.6 Z</Geometry>
+        <!-- 水平对齐：长短交替的 4 条横线，分别左 / 居中 / 右对齐（同参考图） -->
+        <Geometry x:Key="IcoAlignLeft">M2,2.5 H14 V4 H2 Z M2,5.8 H10 V7.3 H2 Z M2,9.1 H14 V10.6 H2 Z M2,12.4 H10 V13.9 H2 Z</Geometry>
+        <Geometry x:Key="IcoAlignCenter">M2,2.5 H14 V4 H2 Z M4,5.8 H12 V7.3 H4 Z M2,9.1 H14 V10.6 H2 Z M4,12.4 H12 V13.9 H4 Z</Geometry>
+        <Geometry x:Key="IcoAlignRight">M2,2.5 H14 V4 H2 Z M6,5.8 H14 V7.3 H6 Z M2,9.1 H14 V10.6 H2 Z M6,12.4 H14 V13.9 H6 Z</Geometry>
+        <!-- 垂直对齐（参考图样式）：长短交替的 4 条横线，整组分别靠上 / 居中 / 靠下 -->
+        <Geometry x:Key="IcoVAlignTop">M2,1.4 H14 V2.9 H2 Z M4,4 H12 V5.5 H4 Z M2,6.6 H14 V8.1 H2 Z M4,9.2 H12 V10.7 H4 Z</Geometry>
+        <Geometry x:Key="IcoVAlignMiddle">M2,3 H14 V4.5 H2 Z M4,5.6 H12 V7.1 H4 Z M2,8.2 H14 V9.7 H2 Z M4,10.8 H12 V12.3 H4 Z</Geometry>
+        <Geometry x:Key="IcoVAlignBottom">M2,5.2 H14 V6.7 H2 Z M4,7.8 H12 V9.3 H4 Z M2,10.4 H14 V11.9 H2 Z M4,13 H12 V14.5 H4 Z</Geometry>
+
+        <!-- ============ 工具栏按钮：图标 + 文字，半透明遮罩做悬停/按下 ============ -->
+        <Style x:Key="ToolButton" TargetType="Button">
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Padding" Value="7,0"/>
+            <Setter Property="Margin" Value="0,0,3,0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#334155"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="5" Padding="{TemplateBinding Padding}">
+                            <Grid>
+                                <Border x:Name="Hover" Background="#14000000" CornerRadius="4" Opacity="0"
+                                        Margin="-7,-4"/>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Path Data="{TemplateBinding Tag}" Width="14" Height="14" Stretch="Uniform"
+                                          Fill="{TemplateBinding Foreground}" Margin="0,0,5,0"
+                                          VerticalAlignment="Center" SnapsToDevicePixels="True"/>
+                                    <ContentPresenter VerticalAlignment="Center" RecognizesAccessKey="True"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Hover" Property="Opacity" Value="1"/>
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="#CBD5E1"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Hover" Property="Background" Value="#26000000"/>
+                                <Setter TargetName="Hover" Property="Opacity" Value="1"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.40"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PrimaryToolButton" TargetType="Button" BasedOn="{StaticResource ToolButton}">
+            <Setter Property="Background" Value="#2B579A"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+
+        <Style x:Key="DangerToolButton" TargetType="Button" BasedOn="{StaticResource ToolButton}">
+            <Setter Property="Foreground" Value="#B91C1C"/>
+        </Style>
+
+        <Style x:Key="GroupLabel" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="Foreground" Value="#94A3B8"/>
+            <Setter Property="Margin" Value="2,0,0,5"/>
+        </Style>
+
+        <Style x:Key="ToolSep" TargetType="Rectangle">
+            <Setter Property="Width" Value="1"/>
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="Fill" Value="#C3CEDD"/>
+            <Setter Property="Margin" Value="8,16,10,0"/>
+            <Setter Property="VerticalAlignment" Value="Bottom"/>
+        </Style>
+
+        <!-- ============ 属性面板图标按钮：图标取自 Tag，选中态圆角边框 + 浅蓝底 ============ -->
+        <!-- 开关型（粗体 / 斜体 / 自动换行），各自独立 -->
+        <Style x:Key="IconToggle" TargetType="ToggleButton">
+            <Setter Property="Width" Value="32"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Margin" Value="0,0,4,0"/>
+            <Setter Property="Foreground" Value="#475569"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="5">
+                            <Grid>
+                                <Border x:Name="Hover" Background="#14000000" CornerRadius="4" Opacity="0"/>
+                                <Path Data="{TemplateBinding Tag}" Width="16" Height="16" Stretch="Uniform"
+                                      Fill="{TemplateBinding Foreground}" HorizontalAlignment="Center"
+                                      VerticalAlignment="Center" SnapsToDevicePixels="True"/>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Hover" Property="Opacity" Value="1"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#EAF0F9"/>
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="#2B579A"/>
+                                <Setter Property="Foreground" Value="#2B579A"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.40"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 自动换行专用：深色 ab/c 文字块 + 右下角蓝色折返箭头（双色，参考图样式） -->
+        <Style x:Key="IconToggleWrap" TargetType="ToggleButton" BasedOn="{StaticResource IconToggle}">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="5">
+                            <Grid>
+                                <Border x:Name="Hover" Background="#14000000" CornerRadius="4" Opacity="0"/>
+                                <!-- 参考图：ab 在上、c 在下，右下角蓝色 ↵ 表示折到下一行 -->
+                                <Grid Width="16" Height="16" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <TextBlock Text="ab" FontSize="7" FontWeight="Bold" FontFamily="Segoe UI"
+                                               Foreground="{TemplateBinding Foreground}"
+                                               HorizontalAlignment="Left" VerticalAlignment="Top"
+                                               Margin="0,0,0,0"/>
+                                    <TextBlock Text="c" FontSize="7" FontWeight="Bold" FontFamily="Segoe UI"
+                                               Foreground="{TemplateBinding Foreground}"
+                                               HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                                               Margin="1,0,0,1"/>
+                                    <Path Data="{StaticResource IcoWrapArrow}" Width="9" Height="9"
+                                          Stretch="Uniform" Fill="#2B8AE8"
+                                          HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                          SnapsToDevicePixels="True"/>
+                                </Grid>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Hover" Property="Opacity" Value="1"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#EAF0F9"/>
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="#2B579A"/>
+                                <Setter Property="Foreground" Value="#2B579A"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.40"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 单选型（左/中/右、上/中/下对齐），同一 GroupName 互斥 -->
+        <Style x:Key="IconRadio" TargetType="RadioButton">
+            <Setter Property="Width" Value="32"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Margin" Value="0,0,4,0"/>
+            <Setter Property="Foreground" Value="#475569"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="5">
+                            <Grid>
+                                <Border x:Name="Hover" Background="#14000000" CornerRadius="4" Opacity="0"/>
+                                <Path Data="{TemplateBinding Tag}" Width="16" Height="16" Stretch="Uniform"
+                                      Fill="{TemplateBinding Foreground}" HorizontalAlignment="Center"
+                                      VerticalAlignment="Center" SnapsToDevicePixels="True"/>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Hover" Property="Opacity" Value="1"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#EAF0F9"/>
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="#2B579A"/>
+                                <Setter Property="Foreground" Value="#2B579A"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.40"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="FieldLabel" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="Foreground" Value="#94A3B8"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+        </Style>
+    </Application.Resources>
+</Application>

@@ -1,0 +1,73 @@
+<UserControl x:Class="UXLabelshop.Views.TemplatesPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" FontSize="13">
+    <DockPanel Margin="14">
+        <!-- 工具栏：分区（模板 / 配置 / 状态），组间竖线分隔，按钮带矢量图标 -->
+        <Border DockPanel.Dock="Top" Background="#F8FAFC" Padding="12,8,12,10" Margin="0,0,0,10"
+                BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="6">
+            <DockPanel>
+                <TextBlock Text="{Binding StatusMessage}" DockPanel.Dock="Right" Foreground="#94A3B8"
+                           VerticalAlignment="Bottom" Margin="16,0,2,4" TextAlignment="Right"/>
+
+                <WrapPanel Orientation="Horizontal">
+                    <!-- 模板 -->
+                    <StackPanel Margin="0,0,2,0">
+                        <TextBlock Text="模板" Style="{StaticResource GroupLabel}"/>
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="新建模板" Tag="{StaticResource IcoNew}"
+                                    Style="{StaticResource PrimaryToolButton}"
+                                    ToolTip="新建空白模板草稿" Click="New_Click"/>
+                            <Button Content="复制" Tag="{StaticResource IcoCopy}" Style="{StaticResource ToolButton}"
+                                    ToolTip="复制选中模板（含画布与变量）" Click="Copy_Click"/>
+                            <Button Content="删除草稿" Tag="{StaticResource IcoDelete}"
+                                    Style="{StaticResource DangerToolButton}" Margin="10,0,3,0"
+                                    ToolTip="删除选中的草稿模板及其全部版本" Click="Delete_Click"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <Rectangle Style="{StaticResource ToolSep}"/>
+
+                    <!-- 配置 -->
+                    <StackPanel Margin="0,0,2,0">
+                        <TextBlock Text="配置" Style="{StaticResource GroupLabel}"/>
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="编辑" Tag="{StaticResource IcoEdit}" Style="{StaticResource ToolButton}"
+                                    ToolTip="打开可视化模板编辑器" Click="Edit_Click"/>
+                            <Button Content="扫码规则" Tag="{StaticResource IcoRules}" Style="{StaticResource ToolButton}"
+                                    ToolTip="校准选中模板的扫码解析规则" Click="Rules_Click"/>
+                            <Button Content="变量管理" Tag="{StaticResource IcoVar}" Style="{StaticResource ToolButton}"
+                                    ToolTip="维护变量、公式与缺省值" Click="Variables_Click"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <Rectangle Style="{StaticResource ToolSep}"/>
+
+                    <!-- 状态 -->
+                    <StackPanel Margin="0,0,2,0">
+                        <TextBlock Text="状态" Style="{StaticResource GroupLabel}"/>
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="发布" Tag="{StaticResource IcoPublish}"
+                                    Style="{StaticResource PrimaryToolButton}"
+                                    ToolTip="发布模板，扫码打印页即可选用" Click="Publish_Click"/>
+                            <Button Content="停用" Tag="{StaticResource IcoDisable}" Style="{StaticResource ToolButton}"
+                                    ToolTip="停用模板，扫码打印页不再显示" Click="Disable_Click"/>
+                        </StackPanel>
+                    </StackPanel>
+                </WrapPanel>
+            </DockPanel>
+        </Border>
+
+        <DataGrid ItemsSource="{Binding Rows}" SelectedItem="{Binding Selected}"
+                  AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
+                  SelectionMode="Single" HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                  AlternatingRowBackground="#F7F9FC" Background="White" MouseDoubleClick="Grid_MouseDoubleClick">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="编码" Binding="{Binding Code}" Width="200"/>
+                <DataGridTextColumn Header="名称" Binding="{Binding Name}" Width="*" MinWidth="220"/>
+                <DataGridTextColumn Header="幅面" Binding="{Binding SizeText}" Width="130"/>
+                <DataGridTextColumn Header="状态" Binding="{Binding StatusText}" Width="90"/>
+                <DataGridTextColumn Header="更新时间" Binding="{Binding UpdatedText}" Width="150"/>
+            </DataGrid.Columns>
+        </DataGrid>
+    </DockPanel>
+</UserControl>

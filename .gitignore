@@ -1,0 +1,51 @@
+# ---- .NET / WPF 编译产物 ----
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+*.pdb
+*.exe
+*.dll
+*.cache
+*.nupkg
+project.assets.json
+*.deps.json
+*.runtimeconfig.json
+*.AssemblyInfo.cs
+*.AssemblyAttributes.cs
+
+# ---- 发布产物与版本归档（单文件 exe 约 74MB/个，体积过大，另行分发）----
+publish/
+releases/
+
+# ---- 本机配置 / 凭据（含加密的数据库密码与登录密码，禁止入库）----
+config.json
+appsettings.*.local.json
+*.pfx
+*.snk
+
+# ---- 日志与运行期数据 ----
+logs/
+log/
+*.log
+*.txt.bak
+
+# ---- IDE / 编辑器 / 系统 ----
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- 临时与备份 ----
+*.bak
+*.tmp
+*.old
+*.part

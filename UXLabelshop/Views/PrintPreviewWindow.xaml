@@ -1,0 +1,88 @@
+<Window x:Class="UXLabelshop.Views.PrintPreviewWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{Binding Title}" Height="760" Width="1000"
+        WindowStartupLocation="CenterOwner" FontSize="13"
+        Icon="pack://application:,,,/Assets/app.ico">
+    <DockPanel Margin="14">
+        <!-- 打印参数 -->
+        <Border DockPanel.Dock="Top" Background="#F5F7FA" Padding="12" CornerRadius="4" Margin="0,0,0,10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="260"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="打印机" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <ComboBox Grid.Row="0" Grid.Column="1" Height="28" ItemsSource="{Binding Printers}"
+                          SelectedItem="{Binding SelectedPrinter}" DisplayMemberPath="Display"
+                          IsEnabled="{Binding PrintToPrinter}"/>
+
+                <StackPanel Grid.Row="0" Grid.Column="2" Orientation="Horizontal" Margin="20,0,0,0">
+                    <RadioButton Content="打印到打印机" IsChecked="{Binding PrintToPrinter}" GroupName="mode"
+                                 VerticalAlignment="Center" Checked="Mode_Changed"/>
+                    <RadioButton Content="导出 PNG 文件" IsChecked="{Binding ExportToFile}" GroupName="mode"
+                                 VerticalAlignment="Center" Margin="16,0,0,0" Checked="Mode_Changed"/>
+                </StackPanel>
+
+                <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="4" Orientation="Horizontal" Margin="0,10,0,0">
+                    <TextBlock Text="导出目录" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBox Width="520" Height="26" Text="{Binding ExportDir}" IsEnabled="{Binding ExportToFile}"/>
+                    <Button Content="浏览…" Margin="8,0,0,0" Click="Browse_Click" IsEnabled="{Binding ExportToFile}"/>
+                    <TextBlock Text="{Binding PageInfo}" VerticalAlignment="Center" Foreground="Gray" Margin="24,0,0,0"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- 底部操作 -->
+        <Border DockPanel.Dock="Bottom" Margin="0,10,0,0">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Content="开始打印" Width="130" Height="38"
+                        Style="{StaticResource PrimaryButton}" Command="{Binding PrintCommand}"/>
+                <TextBlock Text="{Binding Status}" VerticalAlignment="Center" TextWrapping="Wrap"
+                           Foreground="#2B579A" Margin="0,0,12,0"/>
+            </DockPanel>
+        </Border>
+
+        <!-- 预览列表 -->
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding Items}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel Orientation="Horizontal"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border BorderBrush="#DDD" BorderThickness="1" Margin="0,0,10,10" Padding="6"
+                                Background="White" ToolTip="{Binding Summary}">
+                            <StackPanel>
+                                <Image Source="{Binding Image}" Stretch="Uniform" Height="180"/>
+                                <!-- 正常情况不显示任何文字；仅渲染失败时把原因显示出来 -->
+                                <TextBlock Text="{Binding Summary}" FontSize="11" Foreground="#C0392B"
+                                           MaxWidth="280" TextWrapping="Wrap" Margin="0,4,0,0">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsError}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </DockPanel>
+</Window>

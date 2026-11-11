@@ -1,0 +1,71 @@
+<UserControl x:Class="UXLabelshop.Views.PrintRecordsPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" FontSize="13">
+    <DockPanel Margin="14">
+        <!-- 查询条件 -->
+        <Border DockPanel.Dock="Top" Background="#F5F7FA" Padding="10" CornerRadius="4" Margin="0,0,0,10">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="时间" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                <DatePicker Width="140" SelectedDate="{Binding DateFrom}"/>
+                <TextBlock Text="至" VerticalAlignment="Center" Margin="6,0"/>
+                <DatePicker Width="140" SelectedDate="{Binding DateTo}"/>
+                <TextBlock Text="关键字" VerticalAlignment="Center" Margin="16,0,6,0"/>
+                <TextBox Width="220" Height="26" Text="{Binding Keyword, UpdateSourceTrigger=PropertyChanged}"
+                         ToolTip="任务号 / 模板编码 / 操作人 / 条码"/>
+                <Button Content="查询" Margin="10,0,0,0" Style="{StaticResource PrimaryButton}"
+                        Command="{Binding SearchCommand}" IsDefault="True"/>
+                <Button Content="导出 CSV" Margin="8,0,0,0" Click="Export_Click"/>
+                <TextBlock Text="{Binding StatusMessage}" Foreground="Gray" VerticalAlignment="Center"
+                           Margin="16,0,0,0"/>
+            </StackPanel>
+        </Border>
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="6"/>
+                <RowDefinition Height="240"/>
+            </Grid.RowDefinitions>
+
+            <!-- 记录列表 -->
+            <DataGrid Grid.Row="0" ItemsSource="{Binding Records}" SelectedItem="{Binding SelectedRecord}"
+                      AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
+                      SelectionMode="Single" HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                      AlternatingRowBackground="#F7F9FC" Background="White">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="任务号" Binding="{Binding JobNo}" Width="120"/>
+                    <DataGridTextColumn Header="打印时间" Binding="{Binding CreatedText}" Width="150"/>
+                    <DataGridTextColumn Header="模板" Binding="{Binding TemplateCode}" Width="*" MinWidth="130"/>
+                    <DataGridTextColumn Header="操作人" Binding="{Binding Username}" Width="90"/>
+                    <DataGridTextColumn Header="打印机" Binding="{Binding PrinterName}" Width="140"/>
+                    <DataGridTextColumn Header="总张数" Binding="{Binding TotalQty}" Width="70"/>
+                    <DataGridTextColumn Header="成功" Binding="{Binding OkQty}" Width="60"/>
+                    <DataGridTextColumn Header="失败" Binding="{Binding FailQty}" Width="60"/>
+                    <DataGridTextColumn Header="状态" Binding="{Binding StatusText}" Width="80"/>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <GridSplitter Grid.Row="1" Height="6" HorizontalAlignment="Stretch" Background="#E0E0E0"/>
+
+            <!-- 明细 -->
+            <DockPanel Grid.Row="2">
+                <TextBlock DockPanel.Dock="Top" Text="打印明细（每行 = 1 张标签）" FontWeight="SemiBold"
+                           Foreground="#555" Margin="0,6,0,4"/>
+                <DataGrid ItemsSource="{Binding Items}" AutoGenerateColumns="False" IsReadOnly="True"
+                          CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                          AlternatingRowBackground="#F7F9FC" Background="White">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="序号" Binding="{Binding Seq}" Width="60"/>
+                        <DataGridTextColumn Header="条码" Binding="{Binding Barcode}" Width="220"/>
+                        <DataGridTextColumn Header="型号" Binding="{Binding Model}" Width="180"/>
+                        <DataGridTextColumn Header="批号" Binding="{Binding Batch}" Width="120"/>
+                        <DataGridTextColumn Header="LOT" Binding="{Binding Lot}" Width="140"/>
+                        <DataGridTextColumn Header="D/C" Binding="{Binding Dc}" Width="90"/>
+                        <DataGridTextColumn Header="数量" Binding="{Binding Qty}" Width="90"/>
+                        <DataGridTextColumn Header="结果" Binding="{Binding StatusText}" Width="80"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </DockPanel>
+        </Grid>
+    </DockPanel>
+</UserControl>

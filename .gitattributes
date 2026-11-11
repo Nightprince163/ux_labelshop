@@ -1,0 +1,26 @@
+# 统一换行符，避免 Windows/Linux 协作时整文件 diff
+* text=auto
+
+*.cs       text eol=crlf
+*.xaml     text eol=crlf
+*.csproj   text eol=crlf
+*.props    text eol=crlf
+*.targets  text eol=crlf
+*.md       text eol=crlf
+*.json     text eol=crlf
+*.yml      text eol=crlf
+*.yaml     text eol=crlf
+*.svg      text eol=crlf
+*.py       text eol=crlf
+
+# 二进制资源
+*.png  binary
+*.ico  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.bmp  binary
+*.exe  binary
+*.dll  binary
+*.pdb  binary
+*.lsd  binary
