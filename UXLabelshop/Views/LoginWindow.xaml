@@ -254,13 +254,13 @@
                 <!-- 品牌 -->
                 <StackPanel Margin="44,42,0,0" VerticalAlignment="Top" HorizontalAlignment="Left">
                     <StackPanel Orientation="Horizontal">
-                        <Border Width="32" Height="32" CornerRadius="8"
-                                Background="#1A3A4E" BorderBrush="{StaticResource BrandCyan}" BorderThickness="1">
-                            <Path Data="{StaticResource IcoQr}" Fill="{StaticResource BrandCyan}"
-                                  Stretch="Uniform" Margin="6"/>
-                        </Border>
+                        <Image Source="pack://application:,,,/Assets/ux-logo-x.png"
+                               Width="38" Height="42" Stretch="Uniform"
+                               VerticalAlignment="Center" Margin="0,0,14,0"
+                               RenderOptions.BitmapScalingMode="HighQuality"
+                               ToolTip="优迅"/>
                         <TextBlock Text="UX_LabelShop" FontSize="27" FontWeight="Bold"
-                                   Foreground="{StaticResource TextPrimary}" Margin="12,0,0,0"
+                                   Foreground="{StaticResource TextPrimary}"
                                    VerticalAlignment="Center"/>
                     </StackPanel>
                     <TextBlock Text="L A B E L   P R I N T I N G   S Y S T E M" FontSize="10.5"

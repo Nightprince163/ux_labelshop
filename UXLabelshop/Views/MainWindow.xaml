@@ -16,7 +16,14 @@
                     <Button x:Name="LogoutButton" Content="退出登录" Foreground="White" Background="Transparent"
                             BorderThickness="0" Click="LogoutButton_Click" Padding="8,2"/>
                 </StackPanel>
-                <TextBlock Text="UX_LabelShop" Foreground="White" FontSize="18" FontWeight="Bold"/>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Image Source="pack://application:,,,/Assets/ux-logo-x.png"
+                           Width="24" Height="26" Stretch="Uniform" Margin="0,0,10,0"
+                           VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality"
+                           ToolTip="优迅"/>
+                    <TextBlock Text="UX_LabelShop" Foreground="White" FontSize="18"
+                               FontWeight="Bold" VerticalAlignment="Center"/>
+                </StackPanel>
             </DockPanel>
         </Border>
 

@@ -28,6 +28,8 @@
     <Resource Include="Assets\app.ico" />
     <!-- 登录窗体背景（无边框科技风） -->
     <Resource Include="Assets\login-bg.jpg" />
+    <!-- 优迅 X 形品牌图标（白色透明 PNG，登录窗品牌区 / 主界面顶栏共用） -->
+    <Resource Include="Assets\ux-logo-x.png" />
   </ItemGroup>
 
   <ItemGroup>
