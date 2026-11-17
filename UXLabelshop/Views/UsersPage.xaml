@@ -3,9 +3,12 @@
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" FontSize="14">
     <DockPanel Margin="16">
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,12">
-            <Button Content="新增用户" Style="{StaticResource PrimaryButton}" Click="AddUserButton_Click"/>
-            <Button Content="保存修改" Margin="8,0,0,0" Command="{Binding SaveCommand}"/>
-            <Button Content="刷新" Margin="8,0,0,0" Command="{Binding LoadCommand}"/>
+            <Button Content="新增用户" Tag="{StaticResource IcoNew}" Style="{StaticResource ToolButton}"
+                    Click="AddUserButton_Click"/>
+            <Button Content="保存修改" Tag="{StaticResource IcoSave}" Style="{StaticResource ToolButton}"
+                    Margin="8,0,0,0" Command="{Binding SaveCommand}"/>
+            <Button Content="刷新" Tag="{StaticResource IcoRefresh}" Style="{StaticResource ToolButton}"
+                    Margin="8,0,0,0" Command="{Binding LoadCommand}"/>
             <TextBlock Text="{Binding StatusMessage}" Foreground="Gray" Margin="16,4,0,0" VerticalAlignment="Center"/>
         </StackPanel>
 

@@ -6,15 +6,20 @@
         <Border DockPanel.Dock="Top" Background="#F5F7FA" Padding="10" CornerRadius="4" Margin="0,0,0,10">
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="时间" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                <DatePicker Width="140" SelectedDate="{Binding DateFrom}"/>
+                <DatePicker Width="140" Style="{StaticResource RoundedDatePicker}"
+                            SelectedDate="{Binding DateFrom}"/>
                 <TextBlock Text="至" VerticalAlignment="Center" Margin="6,0"/>
-                <DatePicker Width="140" SelectedDate="{Binding DateTo}"/>
+                <DatePicker Width="140" Style="{StaticResource RoundedDatePicker}"
+                            SelectedDate="{Binding DateTo}"/>
                 <TextBlock Text="关键字" VerticalAlignment="Center" Margin="16,0,6,0"/>
-                <TextBox Width="220" Height="26" Text="{Binding Keyword, UpdateSourceTrigger=PropertyChanged}"
+                <TextBox Width="220" Style="{StaticResource RoundedTextBox}"
+                         Text="{Binding Keyword, UpdateSourceTrigger=PropertyChanged}"
                          ToolTip="任务号 / 模板编码 / 操作人 / 条码"/>
-                <Button Content="查询" Margin="10,0,0,0" Style="{StaticResource PrimaryButton}"
+                <Button Content="查询" Margin="10,0,0,0" Tag="{StaticResource IcoSearch}"
+                        Style="{StaticResource ToolButton}"
                         Command="{Binding SearchCommand}" IsDefault="True"/>
-                <Button Content="导出 CSV" Margin="8,0,0,0" Click="Export_Click"/>
+                <Button Content="导出 CSV" Tag="{StaticResource IcoExport}"
+                        Style="{StaticResource ToolButton}" Click="Export_Click"/>
                 <TextBlock Text="{Binding StatusMessage}" Foreground="Gray" VerticalAlignment="Center"
                            Margin="16,0,0,0"/>
             </StackPanel>

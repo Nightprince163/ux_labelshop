@@ -268,9 +268,12 @@ public class UiCheckService
             {
                 var sim = editor.SimulatePanelEditForTest("12.5", "18");
                 lines.Add($"[INFO] 即时生效模拟 = {sim}");
+                // 字号这一段只断言「改完元素里是 18」：改之前的值取决于是模板里存了 font_size
+                // 还是按 size_mm 折算（老模板为 null、面板显示折算值），写死成 "->18" 会随模板数据漂移。
+                var sizeSeg = sim.Split(';').FirstOrDefault(s => s.StartsWith("fontSize:")) ?? "";
                 var ok = sim.StartsWith("x:") && sim.Contains("->12.5")
                          && sim.Contains("fill:+0") && sim.Contains("edit1:+1")
-                         && sim.Contains("same:+0") && sim.Contains("fontSize:->18")
+                         && sim.Contains("same:+0") && sizeSeg.EndsWith("->18")
                          && sim.Contains("edit2:+1");
                 lines.Add($"[CHECK] 失焦即时生效 / 撤销不合并 / 字号生效：{(ok ? "通过" : "未通过")}");
                 if (!ok) lines.Add($"[FAIL] 即时生效断言不符：{sim}");
@@ -355,6 +358,53 @@ public class UiCheckService
             catch (Exception ex)
             {
                 lines.Add($"[FAIL] 多选自检：{ex.Message}");
+            }
+
+            // 画布外灰底：命中测试 + 真派发一次鼠标事件，确认「从画布外起框 / 点灰底清空」这条路走得到
+            try
+            {
+                var probe = editor.BackdropProbeForTest();
+                lines.Add($"[INFO] 画布外灰底探针 = {probe}");
+                var ok = probe.Contains("accept=True") && probe.Contains("started=True")
+                         && !probe.Contains("band=0x0") && !probe.Contains("selDrag=0")
+                         && probe.Contains("selClick=0");
+                lines.Add($"[CHECK] 画布外灰底可起框 / 点灰底清空选择：{(ok ? "通过" : "未通过")}");
+                if (!ok) lines.Add($"[FAIL] 画布外灰底行为不符：{probe}");
+            }
+            catch (Exception ex)
+            {
+                lines.Add($"[FAIL] 画布外灰底探针：{ex.Message}");
+            }
+
+            // 对齐面板组：只在多选时可用；对齐/分布的几何结果要对，且合并为一次撤销
+            try
+            {
+                var enabled = editor.AlignEnabledForTest();
+                lines.Add($"[INFO] 对齐面板可用状态（无选/单选/多选）= {enabled}");
+                lines.Add($"[CHECK] 对齐面板仅多选可用：{(enabled == "none=False one=False two=True" ? "通过" : "未通过")}");
+                if (enabled != "none=False one=False two=True")
+                    lines.Add($"[FAIL] 对齐面板可用状态不符：{enabled}");
+
+                foreach (var mode in new[] { "left", "right", "top", "bottom", "disth", "distv" })
+                {
+                    var r = editor.SimulateAlignForTest(mode, 3);
+                    lines.Add($"[INFO] 对齐 {mode} = {r}");
+                    var ok = r.Contains("ok:True") && r.Contains("changed:True") && r.Contains("undo:+1");
+                    lines.Add($"[CHECK] 对齐/分布 {mode}：{(ok ? "通过" : "未通过")}");
+                    if (!ok) lines.Add($"[FAIL] 对齐 {mode} 结果不符：{r}");
+                }
+
+                // DPI 下拉：改值 → 画布像素尺寸变化、元素毫米坐标不变、可撤销
+                var dpi = editor.SimulateDpiChangeForTest(300);
+                lines.Add($"[INFO] 改 DPI = {dpi}");
+                var dpiOk = dpi.Contains("dpi:203->300") && dpi.Contains("xUnchanged:True")
+                            && dpi.Contains("undo:+1") && dpi.Contains("combo:300");
+                lines.Add($"[CHECK] DPI 下拉改分辨率（画布重算 / 毫米坐标不变 / 可撤销）：{(dpiOk ? "通过" : "未通过")}");
+                if (!dpiOk) lines.Add($"[FAIL] 改 DPI 结果不符：{dpi}");
+            }
+            catch (Exception ex)
+            {
+                lines.Add($"[FAIL] 对齐/DPI 自检：{ex.Message}");
             }
 
             // 多选状态快照：展示橙色多选框 + 属性面板的多选提示与混合值留空
@@ -534,7 +584,7 @@ public class UiCheckService
             var win = _sp.GetRequiredService<MainWindow>();
             Load(win);
             var hiddenByDefault = win.UpdateBanner.Visibility == Visibility.Collapsed;
-            win.UpdateBannerText.Text = "发现新版本 0.4.2（当前 0.4.1）　·　UXLabelshop_v0.4.2.exe";
+            win.UpdateBannerText.Text = "发现新版本 0.4.3（当前 0.4.2）　·　UXLabelshop_v0.4.3.exe";
             win.UpdateBanner.Visibility = Visibility.Visible;
             Save(win.Content as FrameworkElement, 1180, 760,
                 Path.Combine(outputDir, "12-update-banner.png"), lines);

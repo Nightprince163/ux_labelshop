@@ -75,7 +75,8 @@ public class TemplateElement
     [JsonPropertyName("bold")] public bool? Bold { get; set; }
     /// <summary>斜体；null/旧模板 = 关闭。</summary>
     [JsonPropertyName("italic")] public bool? Italic { get; set; }
-    /// <summary>自动换行：文本超出元素宽度时折行显示；null/旧模板 = 关闭（单行缩小/截断）。</summary>
+    /// <summary>自动换行：文本超出元素宽度时折行显示；null/旧模板 = 关闭（单行溢出显示）。
+    /// 两种情况下字号都按设定值绘制，不会为了塞进元素框而缩小。</summary>
     [JsonPropertyName("word_wrap")] public bool? WordWrap { get; set; }
     [JsonPropertyName("align")] public string? Align { get; set; }
     [JsonPropertyName("valign")] public string? Valign { get; set; }

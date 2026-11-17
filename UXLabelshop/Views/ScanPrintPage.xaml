@@ -11,12 +11,14 @@
             <WrapPanel Orientation="Horizontal">
                 <TextBlock Text="模板" VerticalAlignment="Center" Margin="0,0,6,0"/>
                 <ComboBox Height="30" Width="180" Margin="0,2,10,2"
+                          Style="{StaticResource RoundedComboBox}"
                           ItemsSource="{Binding Templates}"
                           SelectedItem="{Binding SelectedTemplate}"
                           DisplayMemberPath="Name"/>
 
                 <TextBlock Text="扫码" VerticalAlignment="Center" Margin="0,0,6,0"/>
                 <TextBox x:Name="ScanBox" Height="32" Width="234" Margin="0,2,10,2" FontSize="15"
+                         Style="{StaticResource RoundedTextBox}"
                          InputMethod.IsInputMethodEnabled="False"
                          Text="{Binding ScanText, UpdateSourceTrigger=PropertyChanged}"
                          KeyDown="ScanBox_KeyDown" ToolTip="扫码枪回车提交；未匹配规则会新增空行供手动填写"/>

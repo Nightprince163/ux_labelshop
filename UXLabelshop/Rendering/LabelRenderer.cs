@@ -173,101 +173,30 @@ public class LabelRenderer
         var italic = el.Italic == true;
         var wrap = el.WordWrap == true;
 
-        var (font, fitted) = wrap
-            ? FitWrapped(txt, el.Font, sizePx, w, h, bold, italic)
-            : FitText(txt, el.Font, sizePx, w, bold, italic);
-        try
-        {
-            using var sf = new StringFormat(StringFormat.GenericTypographic)
-            {
-                // 自动换行：允许按宽度折行，只画完整行且裁剪在元素框内；
-                // 关闭时维持原有单行行为（NoWrap + 缩小字号/截断），旧模板输出不变。
-                FormatFlags = wrap
-                    ? StringFormatFlags.LineLimit
-                    : StringFormatFlags.NoWrap | StringFormatFlags.NoClip,
-                Alignment = (el.Align ?? "left") switch
-                {
-                    "center" => StringAlignment.Center,
-                    "right" => StringAlignment.Far,
-                    _ => StringAlignment.Near,
-                },
-                LineAlignment = (el.Valign ?? "middle") switch
-                {
-                    "top" => StringAlignment.Near,
-                    "bottom" => StringAlignment.Far,
-                    _ => StringAlignment.Center,
-                },
-            };
-            using var brush = new SolidBrush(Color.Black);
-            g.DrawString(fitted, font, brush, new RectangleF(x, y, Math.Max(1f, w), Math.Max(1f, h)), sf);
-        }
-        finally
-        {
-            // 字体来自缓存，不在此释放
-        }
-    }
-
-    private (Font Font, string Text) FitText(string text, string? fontName, float sizePx, float maxWidth,
-        bool bold, bool italic)
-    {
-        var font = GetFont(fontName, sizePx, bold, italic);
-        if (maxWidth <= 0) return (font, text);
-
-        var width = Measure(font, text);
-        if (width <= maxWidth) return (font, text);
-
-        // 1) 等比缩小字号
-        var ratio = maxWidth / Math.Max(1f, width);
-        var smaller = GetFont(fontName, Math.Max(6, (float)(sizePx * ratio * 0.98)), bold, italic);
-        if (Measure(smaller, text) <= maxWidth) return (smaller, text);
-
-        // 2) 仍超宽 → 截断加省略号
-        const string ellipsis = "…";
-        var output = "";
-        foreach (var ch in text)
-        {
-            if (Measure(smaller, output + ch + ellipsis) > maxWidth) break;
-            output += ch;
-        }
-        return (smaller, output.Length > 0 ? output + ellipsis : text[..1]);
-    }
-
-    /// <summary>自动换行：按元素宽度折行，若总行高超出元素高度则等比缩小字号（下限 6px）。</summary>
-    private (Font Font, string Text) FitWrapped(string text, string? fontName, float sizePx,
-        float maxWidth, float maxHeight, bool bold, bool italic)
-    {
-        var font = GetFont(fontName, sizePx, bold, italic);
-        if (maxWidth <= 0 || maxHeight <= 0) return (font, text);
-
-        for (var i = 0; i < 12 && sizePx > 6; i++)
-        {
-            var needed = MeasureWrapped(font, text, maxWidth);
-            if (needed <= maxHeight) break;
-            sizePx = Math.Max(6, sizePx * 0.88f);
-            font = GetFont(fontName, sizePx, bold, italic);
-        }
-        return (font, text);
-    }
-
-    private static float MeasureWrapped(Font font, string text, float maxWidth)
-    {
-        using var bmp = new Bitmap(1, 1);
-        using var g = Graphics.FromImage(bmp);
-        g.TextRenderingHint = TextRenderingHint.SingleBitPerPixelGridFit;
+        // 字号一律按设定值绘制：不再为了塞进元素框而缩字号或截断加省略号。
+        // 宽度不够时 —— 勾了自动换行就按元素宽度折行，没勾就单行溢出到元素框外。
+        // 两种情况都不裁剪到元素框（NoClip），真正的界限是标签位图边缘。
+        var font = GetFont(el.Font, sizePx, bold, italic);
         using var sf = new StringFormat(StringFormat.GenericTypographic)
         {
-            FormatFlags = StringFormatFlags.LineLimit,
+            FormatFlags = wrap
+                ? StringFormatFlags.NoClip                     // 折行，行高不够也照画（溢出）
+                : StringFormatFlags.NoWrap | StringFormatFlags.NoClip,
+            Alignment = (el.Align ?? "left") switch
+            {
+                "center" => StringAlignment.Center,
+                "right" => StringAlignment.Far,
+                _ => StringAlignment.Near,
+            },
+            LineAlignment = (el.Valign ?? "middle") switch
+            {
+                "top" => StringAlignment.Near,
+                "bottom" => StringAlignment.Far,
+                _ => StringAlignment.Center,
+            },
         };
-        // 按指定宽度排版后返回所需高度（含自动折行与显式 \n）
-        return g.MeasureString(text, font, (int)Math.Max(1, maxWidth), sf).Height;
-    }
-
-    private static float Measure(Font font, string text)
-    {
-        using var bmp = new Bitmap(1, 1);
-        using var g = Graphics.FromImage(bmp);
-        g.TextRenderingHint = TextRenderingHint.SingleBitPerPixelGridFit;
-        return g.MeasureString(text, font, new PointF(0, 0), StringFormat.GenericTypographic).Width;
+        using var brush = new SolidBrush(Color.Black);
+        g.DrawString(txt, font, brush, new RectangleF(x, y, Math.Max(1f, w), Math.Max(1f, h)), sf);
     }
 
     private Font GetFont(string? name, float sizePx, bool bold, bool italic)

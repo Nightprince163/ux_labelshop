@@ -6,16 +6,36 @@
         Icon="pack://application:,,,/Assets/app.ico">
 
     <DockPanel>
-        <!-- 工具栏：分区（添加 / 层级 / 操作），组间竖线分隔，按钮带矢量图标 -->
+        <!-- 工具栏：分区（操作 / 添加 / 层级 / 对齐），组间竖线分隔，按钮带矢量图标 -->
         <Border DockPanel.Dock="Top" Background="#F8FAFC" Padding="14,10,14,12"
                 BorderBrush="#E2E8F0" BorderThickness="0,0,0,1">
             <StackPanel>
-                <!-- 元信息行：模板名称 + 缩放 -->
+                <!-- 元信息行：模板名称 + DPI + 保存/试打/发布，右侧缩放 -->
                 <DockPanel Margin="0,0,0,10">
                     <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
                         <TextBlock Text="模板名称" VerticalAlignment="Center" Foreground="#64748B" Margin="0,0,8,0"/>
                         <TextBox x:Name="NameBox" Width="210" Height="28" VerticalContentAlignment="Center"
                                  Padding="6,0"/>
+
+                        <TextBlock Text="DPI" VerticalAlignment="Center" Foreground="#64748B" Margin="14,0,8,0"/>
+                        <ComboBox x:Name="DpiCombo" Width="78" Height="28" VerticalContentAlignment="Center"
+                                  ToolTip="输出分辨率（点/英寸）：203 为常见热敏标签机，300/600 更精细但渲染更慢"
+                                  SelectionChanged="Dpi_Changed">
+                            <ComboBoxItem Content="203"/>
+                            <ComboBoxItem Content="300"/>
+                            <ComboBoxItem Content="600"/>
+                        </ComboBox>
+
+                        <Rectangle Width="1" Height="20" Fill="#C3CEDD" Margin="12,0,12,0"
+                                   VerticalAlignment="Center"/>
+                        <Button Content="保存" Tag="{StaticResource IcoSave}"
+                                Style="{StaticResource PrimaryToolButton}"
+                                ToolTip="保存为新版本" Click="Save_Click"/>
+                        <Button Content="试打" Tag="{StaticResource IcoPrint}" Style="{StaticResource ToolButton}"
+                                ToolTip="用当前样例数据预览打印" Click="TestPrint_Click"/>
+                        <Button Content="发布" Tag="{StaticResource IcoPublish}"
+                                Style="{StaticResource PrimaryToolButton}"
+                                ToolTip="保存并发布为可用模板" Click="Publish_Click"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" HorizontalAlignment="Right">
                         <TextBlock Text="缩放" VerticalAlignment="Center" Foreground="#64748B" Margin="0,0,8,0"/>
@@ -28,6 +48,28 @@
                 </DockPanel>
 
                 <WrapPanel Orientation="Horizontal">
+                    <!-- 操作（撤销/重做只有图标，tooltip 提示） -->
+                    <StackPanel Margin="0,0,2,0">
+                        <TextBlock Text="操作" Style="{StaticResource GroupLabel}"/>
+                        <StackPanel Orientation="Horizontal">
+                            <Button x:Name="UndoButton" Tag="{StaticResource IcoUndoCurve}"
+                                    Style="{StaticResource IconToolButton}" IsEnabled="False"
+                                    ToolTipService.ShowOnDisabled="True"
+                                    ToolTip="撤销上一步（Ctrl+Z）" Click="Undo_Click"/>
+                            <Button x:Name="RedoButton" Tag="{StaticResource IcoRedoCurve}"
+                                    Style="{StaticResource IconToolButton}" IsEnabled="False"
+                                    ToolTipService.ShowOnDisabled="True"
+                                    ToolTip="重做（Ctrl+Y）" Click="Redo_Click"/>
+                            <Button Content="全选" Tag="{StaticResource IcoSelectAll}"
+                                    Style="{StaticResource ToolButton}"
+                                    Margin="10,0,0,0" ToolTip="选中全部元素（Ctrl+A）" Click="SelectAll_Click"/>
+                            <Button Content="删除" Tag="{StaticResource IcoDelete}" Style="{StaticResource ToolButton}"
+                                    ToolTip="删除选中元素" Click="DeleteElement_Click"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <Rectangle Style="{StaticResource ToolSep}"/>
+
                     <!-- 添加 -->
                     <StackPanel Margin="0,0,2,0">
                         <TextBlock Text="添加" Style="{StaticResource GroupLabel}"/>
@@ -65,28 +107,27 @@
 
                     <Rectangle Style="{StaticResource ToolSep}"/>
 
-                    <!-- 操作 -->
-                    <StackPanel Margin="0,0,2,0">
-                        <TextBlock Text="操作" Style="{StaticResource GroupLabel}"/>
+                    <!-- 对齐：只在选中多个元素时可用（整组置灰），纯图标 + tooltip -->
+                    <StackPanel x:Name="AlignGroup" Margin="0,0,2,0" IsEnabled="False"
+                                ToolTipService.ShowOnDisabled="True"
+                                ToolTip="选中两个以上元素后可用">
+                        <TextBlock Text="对齐" Style="{StaticResource GroupLabel}"/>
                         <StackPanel Orientation="Horizontal">
-                            <Button x:Name="UndoButton" Content="撤销" Tag="{StaticResource IcoUndo}"
-                                    Style="{StaticResource ToolButton}" IsEnabled="False"
-                                    ToolTip="撤销上一步（Ctrl+Z）" Click="Undo_Click"/>
-                            <Button x:Name="RedoButton" Content="重做" Tag="{StaticResource IcoRedo}"
-                                    Style="{StaticResource ToolButton}" IsEnabled="False"
-                                    ToolTip="重做（Ctrl+Y）" Click="Redo_Click"/>
-                            <Button Content="全选" Style="{StaticResource ToolButton}"
-                                    Margin="12,0,0,0" ToolTip="选中全部元素（Ctrl+A）" Click="SelectAll_Click"/>
-                            <Button Content="删除" Tag="{StaticResource IcoDelete}" Style="{StaticResource ToolButton}"
-                                    Margin="0,0,4,0" ToolTip="删除选中元素" Click="DeleteElement_Click"/>
-                            <Button Content="保存" Tag="{StaticResource IcoSave}"
-                                    Style="{StaticResource PrimaryToolButton}" Margin="12,0,4,0"
-                                    ToolTip="保存为新版本" Click="Save_Click"/>
-                            <Button Content="试打" Tag="{StaticResource IcoPrint}" Style="{StaticResource ToolButton}"
-                                    ToolTip="用当前样例数据预览打印" Click="TestPrint_Click"/>
-                            <Button Content="发布" Tag="{StaticResource IcoPublish}"
-                                    Style="{StaticResource PrimaryToolButton}"
-                                    ToolTip="保存并发布为可用模板" Click="Publish_Click"/>
+                            <Button Tag="{StaticResource IcoObjAlignLeft}" Style="{StaticResource IconToolButton}"
+                                    ToolTip="左对齐（左边缘对齐到最左的元素）" Click="AlignLeft_Click"/>
+                            <Button Tag="{StaticResource IcoObjAlignRight}" Style="{StaticResource IconToolButton}"
+                                    ToolTip="右对齐（右边缘对齐到最右的元素）" Click="AlignRight_Click"/>
+                            <Button Tag="{StaticResource IcoObjAlignTop}" Style="{StaticResource IconToolButton}"
+                                    ToolTip="顶端对齐（上边缘对齐到最上的元素）" Click="AlignTop_Click"/>
+                            <Button Tag="{StaticResource IcoObjAlignBottom}" Style="{StaticResource IconToolButton}"
+                                    ToolTip="底端对齐（下边缘对齐到最下的元素）" Click="AlignBottom_Click"/>
+                            <Button Tag="{StaticResource IcoObjDistributeH}" Style="{StaticResource IconToolButton}"
+                                    Margin="8,0,3,0"
+                                    ToolTip="横向均匀分布（两端不动，中间等间距；需三个以上元素）"
+                                    Click="DistributeH_Click"/>
+                            <Button Tag="{StaticResource IcoObjDistributeV}" Style="{StaticResource IconToolButton}"
+                                    ToolTip="纵向均匀分布（两端不动，中间等间距；需三个以上元素）"
+                                    Click="DistributeV_Click"/>
                         </StackPanel>
                     </StackPanel>
                 </WrapPanel>
@@ -105,7 +146,11 @@
             </Grid.ColumnDefinitions>
 
             <!-- 画布 -->
-            <ScrollViewer Grid.Column="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
+            <!-- 灰底空白处也接圈选（起点可在画布外、点画布外也清空选择）：
+                 事件在代码里挂到窗口上（Backdrop_*），且必须用冒泡的 MouseDown/Move/Up —
+                 MouseLeftButtonDown 是直接路由事件，挂在祖先上收不到子元素（灰底 Grid）的点击。 -->
+            <ScrollViewer x:Name="CanvasArea" Grid.Column="0"
+                          HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
                           Background="#E9ECF1">
                 <Border Margin="20" Background="White" BorderBrush="#BBB" BorderThickness="1"
                         HorizontalAlignment="Left" VerticalAlignment="Top">
@@ -206,7 +251,7 @@
                                           Checked="Panel_Changed" Unchecked="Panel_Changed"/>
                             <ToggleButton x:Name="WrapToggle"
                                           Style="{StaticResource IconToggleWrap}"
-                                          ToolTip="自动换行：文字超出元素宽度时折行显示"
+                                          ToolTip="自动换行：文字超出元素宽度时折行显示（不缩小字号）"
                                           Checked="Panel_Changed" Unchecked="Panel_Changed"/>
                         </StackPanel>
 
@@ -246,7 +291,7 @@
                         <Button Content="变量管理…（增删改 / 缺省值 / 公式）" Margin="0,6,0,0"
                                 Click="AddVar_Click" ToolTip="打开独立变量管理窗口，变量定义存于 label_template_var 子表"/>
 
-                        <TextBlock Text="画布说明：拖动元素移动，拖右下角小方块缩放；坐标单位毫米。"
+                        <TextBlock Text="画布说明：拖动元素移动，拖右下角小方块缩放；坐标单位毫米。灰底空白处也能拖框圈选，点空白处清空选择。文字不会自动缩小：勾了自动换行就折行，没勾则溢出显示。"
                                    Foreground="Gray" TextWrapping="Wrap" FontSize="11" Margin="0,10,0,0"/>
                     </StackPanel>
                 </Border>
