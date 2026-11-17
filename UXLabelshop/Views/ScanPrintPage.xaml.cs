@@ -82,6 +82,14 @@ public partial class ScanPrintPage : UserControl
     private ContextMenu BuildRowMenu(DataGridRow row)
     {
         var menu = new ContextMenu();
+        var copy = new MenuItem
+        {
+            Header = "复制当前行",
+            ToolTip = "在清单末尾新增一行，数据与原行完全相同并选中新行",
+        };
+        copy.Click += (_, _) => DuplicateCurrentRow(row);
+        menu.Items.Add(copy);
+        menu.Items.Add(new Separator());
         var one = new MenuItem { Header = "重算本行公式列" };
         one.Click += (_, _) => RecomputeOne(row.DataContext as DataRowView);
         var all = new MenuItem { Header = "重算全部行的公式列" };
@@ -93,6 +101,30 @@ public partial class ScanPrintPage : UserControl
         menu.Items.Add(one);
         menu.Items.Add(all);
         return menu;
+    }
+
+    /// <summary>
+    /// 行右键「复制当前行」：在末尾生成数据完全相同的新行，并把选中项切到新行。
+    /// 选中变化会走 SelectionChanged，顺带把标签预览刷新成新行。
+    /// </summary>
+    private void DuplicateCurrentRow(DataGridRow? row)
+    {
+        if (row?.DataContext is not DataRowView drv) return;
+        var copy = _vm.DuplicateRow(drv.Row);
+        if (copy == null) return;
+
+        void SelectCopy()
+        {
+            var view = DataGridRows.Items.OfType<DataRowView>().LastOrDefault(v => v.Row == copy);
+            if (view == null) return;
+            DataGridRows.SelectedItem = view;
+            DataGridRows.ScrollIntoView(view);
+        }
+
+        // 行刚加入时容器可能还没生成，先同步选一次；不行再排到布局之后
+        SelectCopy();
+        if (!DataGridRows.Items.OfType<DataRowView>().Any(v => v.Row == copy))
+            Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(SelectCopy));
     }
 
     private void RecomputeOne(DataRowView? drv)

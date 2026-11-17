@@ -294,6 +294,24 @@ public partial class ScanPrintViewModel : ObservableObject
         RowsChanged?.Invoke();
     }
 
+    /// <summary>
+    /// 行右键「复制当前行」：在清单末尾新增一行，逐列原样复制源行数据
+    /// （包括用户手动改过的计算列，不走缺省值/公式重算）。返回新行供页面选中。
+    /// </summary>
+    public DataRow? DuplicateRow(DataRow source)
+    {
+        if (Doc == null || source.Table != Table) return null;
+        var copy = Table.NewRow();
+        foreach (DataColumn column in Table.Columns)
+            copy[column] = source[column];
+        // 未挂到 Table 前赋值不触发 ColumnChanged，避免复制过程被自动重算覆盖
+        Table.Rows.Add(copy);
+        RowCount = Table.Rows.Count;
+        RowsChanged?.Invoke();
+        StatusMessage = $"已复制第 {Table.Rows.IndexOf(source) + 1} 行，新增第 {RowCount} 行";
+        return copy;
+    }
+
     public void DeleteRow(DataRowView? rowView)
     {
         if (rowView == null) return;

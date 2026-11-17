@@ -584,7 +584,7 @@ public class UiCheckService
             var win = _sp.GetRequiredService<MainWindow>();
             Load(win);
             var hiddenByDefault = win.UpdateBanner.Visibility == Visibility.Collapsed;
-            win.UpdateBannerText.Text = "发现新版本 0.4.3（当前 0.4.2）　·　UXLabelshop_v0.4.3.exe";
+            win.UpdateBannerText.Text = "发现新版本 0.4.4（当前 0.4.3）　·　UXLabelshop_v0.4.4.exe";
             win.UpdateBanner.Visibility = Visibility.Visible;
             Save(win.Content as FrameworkElement, 1180, 760,
                 Path.Combine(outputDir, "12-update-banner.png"), lines);
